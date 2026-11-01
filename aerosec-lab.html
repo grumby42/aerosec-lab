@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroSec Lab</title>
-<!-- AeroSec Lab | build:AS-29.15 | shipped:2026-11-01T23:38:15utc | head:29 AUDIT FIX: verify adapter restores 35 legacy engines -->
+<!-- AeroSec Lab | build:AS-29.16 | shipped:2026-11-01T23:50:40utc | head:29 hygiene: SPARTA v4.0 labels, 800-53 R5.2.0, tooling prefaces -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* AeroSec Lab — Stylesheet                                                  */
@@ -4871,7 +4871,7 @@ META['security-002'] = {
   ],
   concepts:['SPARC','RTEMS','LEON3','reverse engineering','annulled branches','uninitialized variable','CWE-457','CRC8','protocol reversing','exploit dev'],
   tools:['Ghidra','IDA','qemu-system-sparc','gdb-multiarch','python3','CyberChef'],
-  aegis:'Setup: download QEMU 4.1.0, apply LEON3 patch, build. Run: qemu-system-sparc -no-reboot -nographic -M leon3_generic -m 64M -kernel test.elf -gdb tcp::9000. Attach: gdb-multiarch test.elf. In Ghidra: import as SPARC big-endian; locate Init(), readMsg(), msgHandler(), handleHeader(), handleGetInfo(), clipStrIdx(). The annulled branch (suffix ",a") in clipStrIdx is the bug. The fix would be to always initialize %l7 before the branch.',
+  aegis:'TOOLING PREFACE (external RE tools, not in-browser): requires QEMU (LEON3), gdb-multiarch and Ghidra on your own machine. Setup: download QEMU 4.1.0, apply LEON3 patch, build. Run: qemu-system-sparc -no-reboot -nographic -M leon3_generic -m 64M -kernel test.elf -gdb tcp::9000. Attach: gdb-multiarch test.elf. In Ghidra: import as SPARC big-endian; locate Init(), readMsg(), msgHandler(), handleHeader(), handleGetInfo(), clipStrIdx(). The annulled branch (suffix ",a") in clipStrIdx is the bug. The fix would be to always initialize %l7 before the branch.',
   writeups:[
     {team:'starfleetcadet75 (CTFtime)',insight:'The vulnerability is uninitialized %l7 register on the index=0 path of clipStrIdx() due to SPARC annulled branch. check_checksum() leaves CRC8 in %l7. Send a message whose CRC8 = 3, then GetInfo with index=0, and clipStrIdx returns %l7=3, which indexes into CSWTCH.6[2] = the flag.'},
     {team:'Reframing note',insight:'The lab originally described this as an SEU/radiation bit-flip challenge. That was wrong — the challenge is binary RE on SPARC RTEMS exploiting an annulled-branch + uninitialized-register quirk. The "Sun" in the title refers to the SPARC processor heritage (Sun Microsystems → LEON3, which IS the radiation-tolerant SPARC variant on real spacecraft). The radiation angle is the joke; the bug is software.'},
@@ -4892,7 +4892,7 @@ META['security-003'] = {
   ],
   concepts:['ground station security','web exploitation','default credentials','path traversal','command injection','access control','SPARTA IA-0007','KA-SAT'],
   tools:['python3','requests','curl','nmap','gobuster','burp suite','docker'],
-  aegis:'Workflow: (1) build and run the Docker challenge container from cromulence/groundead/. (2) Enumerate ports and endpoints (nmap, gobuster). (3) For each web endpoint: test auth (default creds, brute force), test inputs (injection, traversal), test access control (forced browsing, IDOR). (4) Once any endpoint yields useful response, escalate to command access and flag retrieval. Honest disclosure: this aegis is a general ground-segment pentest methodology rather than a verified solution to the specific Groundead challenge.',
+  aegis:'TOOLING PREFACE (external tools, not in-browser): requires Docker plus nmap/gobuster and a browser or curl on your own machine. Workflow: (1) build and run the Docker challenge container from cromulence/groundead/. (2) Enumerate ports and endpoints (nmap, gobuster). (3) For each web endpoint: test auth (default creds, brute force), test inputs (injection, traversal), test access control (forced browsing, IDOR). (4) Once any endpoint yields useful response, escalate to command access and flag retrieval. Honest disclosure: this aegis is a general ground-segment pentest methodology rather than a verified solution to the specific Groundead challenge.',
   sparta:[
     {id:'IA-0007', name:'Compromise Ground System', url:'https://sparta.aerospace.org/technique/IA-0007/', relevance:'Primary technique — the challenge\'s entire premise is compromising a ground system'},
     {id:'IA-0007.02', name:'Malicious Commanding via Valid GS', url:'https://sparta.aerospace.org/technique/IA-0007/02/', relevance:'Sub-technique — exact match for "exploit ground station, then issue valid commands"'},
@@ -4948,7 +4948,7 @@ META['rud-004'] = {
   hints:['You ARE the impostor; the other voters reply in ~0.5–1.5s','Script the interaction to match the expected protocol and timing','Watch the round structure, not a process table'],
   concepts:['deception','timing','interactive protocol','game logic','scripting'],
   tools:['python3','pwntools'],
-  aegis:'AUDIT-CORRECTED: the prior framing (find an impostor process in a flight-software process table) was inaccurate. HAS2 (2021) "amogus" is an Among Us-themed interactive challenge where you play the impostor against timed voters. Solve by scripting the network interaction within the timing window (pwntools).',
+  aegis:'TOOLING PREFACE (external tools, not in-browser): a network interaction solved with Python + pwntools against the challenge service. AUDIT-CORRECTED: the prior framing (find an impostor process in a flight-software process table) was inaccurate. HAS2 (2021) "amogus" is an Among Us-themed interactive challenge where you play the impostor against timed voters. Solve by scripting the network interaction within the timing window (pwntools).',
   writeups:[{title:'Hack-A-Sat 2 (2021) — open-source challenge source',url:'https://github.com/cromulencellc/hackasat-qualifier-2021'}]
 };
 
@@ -4961,7 +4961,7 @@ META['rud-005'] = {
   hints:['import struct; pkt = struct.pack(">IIH", 0x5A5A5A5A, payload_size, opcode) + args','payload_size = 2 (opcode only) + len(args). Total packet = 10 bytes minimum.','The opcode for the flag command is shown in the scenario. Send to the service port with socket or pwntools.'],
   concepts:["F Prime","NASA JPL","flight software","command serialization","opcode","big-endian","struct"],
   tools:['python3','struct','pwntools'],
-  aegis:'F Prime command: struct.pack(">IIH", 0x5A5A5A5A, size, opcode) + argument_bytes. Size = 2 + len(args). Send to the TCP port. The service returns telemetry containing the flag. Look for the flag{ pattern in the response bytes.',
+  aegis:'TOOLING PREFACE (external tools, not in-browser): requires the Dockerized F Prime/GDS stack and Python on your own machine. F Prime command: struct.pack(">IIH", 0x5A5A5A5A, size, opcode) + argument_bytes. Size = 2 + len(args). Send to the TCP port. The service returns telemetry containing the flag. Look for the flag{ pattern in the response bytes.',
   writeups:[{team:'Solar Wine',insight:'F Prime GDS: the descriptor 0x5A5A5A5A must be exact — any byte wrong and the packet is silently dropped. The size field counts bytes AFTER the descriptor (so size = 6 + len(args) including the opcode 2 bytes). Big-endian throughout.'}]
 };
 
@@ -8985,7 +8985,7 @@ function renderComplianceTags(challengeId, containerEl) {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SPARTA THREAT MAPPING (Phase 1 — NRS tagging pass, batch 1)
-// Aerospace Corporation, Space Attack Research and Tactic Analysis (SPARTA) v3.2
+// Aerospace Corporation, Space Attack Research and Tactic Analysis (SPARTA) v4.0 — Aug 2026. Technique and CM IDs used here were verified against v3.2 and persist in v4.0.
 // (released 2026-03-11). Distribution Statement A; OTR 2022-01250.
 // 9 tactics (ST0001-ST0009), 85+ techniques. Each technique carries a Notional
 // Risk Score (NRS): three values by system criticality (High/Med/Low), 1-25 on a
@@ -9116,7 +9116,7 @@ SPARTA_TAGS['tabletop-003'] = {
 };
 
 // ── SPARTA tagging — batch 2: RF / comms cluster + RF command-injection chain ──
-// All technique IDs verified against the SPARTA v3.2 matrix (fetch 2026-06-30).
+// All technique IDs verified against the SPARTA v4.0 matrix (fetch 2026-06-30).
 // Pedagogical framing: decoding a link IS reconnaissance/collection (REC-0003 /
 // REC-0005), the foundational skill that precedes any active RF attack. The
 // active attack is modeled separately in tabletop-002.
@@ -9154,7 +9154,7 @@ SPARTA_TAGS['tabletop-002'] = {
 };
 
 // ── SPARTA tagging — batch 3a: exploitation / ops cluster (audited-framing only) ──
-// Technique IDs verified against SPARTA v3.2 matrix (fetch 2026-06-30).
+// Technique IDs verified against SPARTA v4.0 matrix (fetch 2026-06-30).
 // NOTE: rud-003, rud-004, rud-005, has3-004 are intentionally NOT tagged here —
 // their META framing is un-audited, and tagging on un-audited framing risks
 // attaching wrong technique IDs. They are queued for the META audit pass (batch 3b).
@@ -9231,11 +9231,11 @@ SPARTA_TAGS['has3-004'] = { techniques:[
   note:'AUDIT (2026-06-30): refined framing — HAS3 "Ominous Etude" is a usermode MicroBlaze crackme (reverse quick_math() to find the accepted decimal input) run under qemu-microblaze, not a captured FPGA bitstream. Verified via Zack Orndorff "Blazin\' Etudes" HAS3 writeup.' };
 
 SPARTA_TAGS['rud-004'] = {
-  scope_note:'AUDIT (2026-06-30): prior framing (find an impostor process in a flight-software process table) was inaccurate. HAS2 (2021) "amogus" is an Among Us-themed interactive challenge where YOU are the impostor against timed voters — a logic/timing/deception game that does not map to a specific SPARTA space-attack technique. The nearest thematic concept is IMP-0001 Deception or Misdirection, but the fit is loose, so no technique tag is asserted. META corrected.',
+  scope_note:'AUDIT (2026-06-30): prior framing (find an impostor process in a flight-software process table) was inaccurate. HAS2 (2021) "amogus" is an Among Us-themed interactive challenge where YOU are the impostor against timed voters — a logic/timing/deception game that does not map to a specific SPARTA space-attack technique. SPARTA v4.0 (Aug 2026) retired the legacy Impact techniques (incl. IMP-0001 Deception) in favor of eight mechanism-based Impact techniques and five Impact Vectors; none fits a voting game, so no technique tag is asserted. META corrected.',
 };
 
 // ── SPARTA tagging — batch 4: aaaa astrodynamics family (Reconnaissance layer) ──
-// All IDs verified against SPARTA v3.2 matrix (fetch 2026-06-30). Pedagogical frame:
+// All IDs verified against SPARTA v4.0 matrix (fetch 2026-06-30). Pedagogical frame:
 // the astrodynamics/sensor challenges are the "understand the target" reconnaissance
 // layer; GPS Trilateration is the PNT foundation that PNT spoofing/jamming subvert.
 const _T = (id,name,tac,tid,url,note) => ({id,name,tactic:tac,tactic_id:tid,url,status:'verified',note});
@@ -9314,7 +9314,7 @@ function renderSpartaTag(challengeId, containerEl) {
     <div style="font-family:sans-serif;font-size:11px;color:var(--tx3);margin:6px 0 12px;line-height:1.55">
       Where this challenge sits in the Aerospace Corporation
       <a href="https://sparta.aerospace.org/" target="_blank" rel="noopener" style="color:${P};text-decoration:underline">SPARTA</a>
-      matrix (v3.2). Notional Risk Scores are mission-specific — read the base score on each technique page and tailor it.
+      matrix (v4.0, Aug 2026). Notional Risk Scores are mission-specific — read the base score on each technique page and tailor it.
     </div>`;
 
   if (tag.scope_note) {
@@ -9363,7 +9363,7 @@ function renderSpartaTag(challengeId, containerEl) {
 
   html += `<div style="font-family:var(--mono);font-size:8px;color:var(--tx3);margin-top:10px;letter-spacing:0.5px">
     NRS methodology: <a href="https://sparta.aerospace.org/notional-risk-scores" target="_blank" rel="noopener" style="color:${P}">sparta.aerospace.org/notional-risk-scores</a>
-    · SPARTA v3.2 · Aerospace Corp · Distribution A (OTR 2022-01250)
+    · SPARTA v4.0 (Aug 2026) · Aerospace Corp · Distribution A (OTR 2022-01250)
   </div></details>`;
   containerEl.insertAdjacentHTML('beforeend', html);
 }
@@ -13352,7 +13352,7 @@ TABLETOP.archetypes['vpn-wiper'] = {
     const shuffledCl = classifications.slice().sort(() => rng.next() - 0.5);
 
     // SPARTA Countermeasures (Part 4) — which CMs would have prevented or mitigated this?
-    // Source: SPARTA v1.6+ countermeasure catalog. CMs presented are real; mappings are educator-grade approximations.
+    // Source: SPARTA countermeasure catalog (CM IDs stable through v4.0, Aug 2026). CMs presented are real; mappings are educator-grade approximations.
     const sparta_cms = [
       { id: 'CM0031', name: 'Authentication', tier: 1, segment: 'ground', good: true, why: 'MFA on the svc-mgmt-rw service account would have stopped the VPN pivot at step 1.' },
       { id: 'CM0029', name: 'TRANSEC', tier: 1, segment: 'ground+space', good: false, why: 'Transmission security protects the RF link. This attack never used RF — TRANSEC would not have helped.' },
@@ -21498,8 +21498,8 @@ META['has4-003'].hints = [
 
 
 
-const BUILD_ID = 'AS-29.15';
-const BUILD_UTC = '2026-11-01T23:38:15Z';
+const BUILD_ID = 'AS-29.16';
+const BUILD_UTC = '2026-11-01T23:50:40Z';
 // ═══════════════════════════════════════════════════════════════════════════════
 // RF FOUNDATIONS TRACK (Phase 3) — original, fully in-browser signal-reading drills
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -22388,13 +22388,13 @@ ANSWER: APPLY, TAILOR, or NOT-APPLICABLE.`;
 
 // ── Security Controls: META ─────────────────────────────────────────────────────
 META['controls-001'] = {
-  brief: `Half of space security is choosing the right control for the threat. Map a SPARTA attack + scenario to the NIST SP 800-53 (Rev 5) control that best addresses it.<br><br><strong>Answer format:</strong> a control ID (e.g. SC-7).`,
+  brief: `Half of space security is choosing the right control for the threat. Map a SPARTA attack + scenario to the NIST SP 800-53 (Rev 5, Release 5.2.0) control that best addresses it.<br><br><strong>Answer format:</strong> a control ID (e.g. SC-7).`,
   debrief: `This is the crosswalk the SPARTA countermeasures already imply: each technique has a mitigating control family. SPARTA's own countermeasures map to 800-53 (e.g. CM0038 Segmentation ↔ SC-7, CM0034 Monitoring ↔ SI-4, CM0031 Authentication ↔ IA-2). Being fluent in "this attack → that control" is exactly the translator skill the space-cyber talent gap is about — it bridges the offensive picture and the compliance/engineering picture.`,
   objectives: ['Map a SPARTA technique to its mitigating 800-53 control family', 'Distinguish prevent vs detect vs protect-data vs recover controls', 'Connect SPARTA countermeasures to the NIST control catalog'],
   pass: 'Select the best-fit control.',
   fail: 'Choosing a plausible neighbor (e.g. SI-4 monitoring when the scenario asks to PREVENT, not detect). Read the intent verb in the scenario.',
   concepts: ['NIST SP 800-53', 'control families', 'SPARTA countermeasures', 'defense mapping'],
-  tools: ['NIST SP 800-53 Rev 5 catalog (reference)'],
+  tools: ['NIST SP 800-53 Rev 5 / Release 5.2.0 catalog (reference)'],
   aegis: 'Detect → SI-4. Boundary → SC-7. Data at rest → SC-28. Recover → CP-10. Authenticate → IA-2. Find vulns → RA-5. In-transit integrity/anti-replay → SC-8.',
 };
 META['controls-002'] = {
