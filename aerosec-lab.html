@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroSec Lab</title>
-<!-- AeroSec Lab | build:AS-29.18 | shipped:2026-11-01T23:56:35utc | head:29 +citation re-check badges +Detection Engineering det-001 (SpaceCOP-style) -->
+<!-- AeroSec Lab | build:AS-29.19 | shipped:2026-11-02T01:25:20utc | head:29 +RF & PNT Hands-On Extensions (receive/analysis + detection tooling) -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* AeroSec Lab — Stylesheet                                                  */
@@ -6042,6 +6042,178 @@ const COMPLIANCE = {};
 //     verified for this specific challenge. SHOWN TO USERS. Required for any entry
 //     that includes partial or unverified citations.
 const HANDS_ON_EXTENSION = {};
+
+// ── Hands-On Extensions: RF Foundations (receive/analysis tooling) ───────────────
+HANDS_ON_EXTENSION['rf-001'] = {
+  online: [
+    { name: 'SDR++ — cross-platform SDR receiver (waterfall)', url: 'https://github.com/AlexandreRouma/SDRPlusPlus', cost: 'free', verified: '2026-11-01', notes: 'Open-source receiver with a clear waterfall. Tune a local FM or the 137 MHz NOAA APT band and read band edges and center frequency against the display — the exact skill this drill teaches.' },
+    { name: 'gqrx — SDR receiver (Linux/macOS)', url: 'https://gqrx.dk/', cost: 'free', verified: '2026-11-01', notes: 'Classic receive/analysis front end for RTL-SDR and friends; good for first-light waterfall reading.' },
+    { name: 'SatNOGS Network — browse real satellite observation waterfalls', url: 'https://network.satnogs.org/', cost: 'free', verified: '2026-11-01', notes: 'Thousands of recorded pass waterfalls from a global receive-only ground-station network. Read real signals without any hardware.' },
+  ],
+  docker: [
+    { name: 'GNU Radio in Docker — signal-processing toolkit', url: 'https://hub.docker.com/r/ghcr.io/gnuradio/gnuradio', verified: '2026-11-01', build_steps: 'gr clone + docker run; see wiki.gnuradio.org', requires_internet: false, notes: 'Build the demodulate-and-decode chain yourself; the drill is the mental model, GNU Radio makes it executable. Offline once pulled.' },
+  ],
+  hardware: [
+    { device: 'RTL-SDR receiver (RTL2832U) + wideband antenna', role: 'Receive real signals to read on a waterfall', approx_cost_usd: '$30-$60', vendor_examples: 'RTL-SDR Blog V4 kit', notes: 'Receive-only USB dongle — the standard first SDR. No transmit capability, which is the correct first tool for reading spectrum.' },
+  ],
+  citations: [
+    { type: 'tool', title: 'SDR++', author: 'Alexandre Rouma', url: 'https://github.com/AlexandreRouma/SDRPlusPlus', year: 2024, verified: '2026-11-01', relevance: 'Open-source SDR receiver; confirmed this session.', fact_check_status: 'verified' },
+    { type: 'project', title: 'SatNOGS / Libre Space Foundation', author: 'Libre Space Foundation', url: 'https://satnogs.org/', year: 2024, verified: '2026-11-01', relevance: 'Open-source receive-only ground-station network; confirmed this session.', fact_check_status: 'verified' },
+  ],
+  verification_notes: 'All receive/analysis tooling. The drill (read center frequency off a waterfall) is fully in-browser; these extend it to real spectrum with a receive-only dongle.',
+};
+HANDS_ON_EXTENSION['rf-002'] = {
+  online: [
+    { name: 'GNU Radio — modulation building blocks', url: 'https://www.gnuradio.org/', cost: 'free', verified: '2026-11-01', notes: 'ASK/FSK/PSK modulator and demodulator blocks let you generate and then identify each modulation, closing the loop on this drill.' },
+    { name: 'PySDR — "A Guide to SDR and DSP using Python" (Marc Lichtman)', url: 'https://pysdr.org/', cost: 'free', verified: '2026-11-01', notes: 'Free online textbook covering modulation, IQ, and demodulation with runnable Python. The definitive free bridge from these drills to real DSP.' },
+  ],
+  docker: [
+    { name: 'GNU Radio in Docker', url: 'https://wiki.gnuradio.org/index.php/Docker', verified: '2026-11-01', build_steps: 'docker pull per wiki', requires_internet: false, notes: 'Run the modulation flowgraphs without a local install. Offline once pulled.' },
+  ],
+  hardware: [
+    { device: 'RTL-SDR receiver', role: 'Observe real ASK/FSK/PSK signals (e.g. ADS-B is PPM, many IoT links are FSK)', approx_cost_usd: '$30-$60', vendor_examples: 'RTL-SDR Blog V4', notes: 'Receive-only. Identify real-world modulations against what the drill taught.' },
+  ],
+  citations: [
+    { type: 'book', title: 'PySDR: A Guide to SDR and DSP using Python', author: 'Dr. Marc Lichtman', url: 'https://pysdr.org/', year: 2024, verified: '2026-11-01', relevance: 'Well-established free SDR/DSP textbook; URL asserted from prior knowledge, not re-fetched this turn.', fact_check_status: 'partial' },
+    { type: 'tool', title: 'GNU Radio', author: 'GNU Radio project', url: 'https://www.gnuradio.org/', year: 2024, verified: '2026-11-01', relevance: 'Confirmed this session.', fact_check_status: 'verified' },
+  ],
+  verification_notes: 'Fully in-browser drill; hardware is receive-only enrichment.',
+};
+HANDS_ON_EXTENSION['rf-003'] = {
+  online: [
+    { name: 'GNU Radio — symbol timing recovery (clock sync blocks)', url: 'https://wiki.gnuradio.org/index.php/Symbol_Sync', cost: 'free', verified: '2026-11-01', notes: 'The real version of this drill: GNU Radio\'s Symbol Sync block recovers the symbol rate the way you estimated it by hand.' },
+    { name: 'PySDR — pulse shaping & synchronization chapter', url: 'https://pysdr.org/content/sync.html', cost: 'free', verified: '2026-11-01', notes: 'Explains symbol rate, samples-per-symbol and timing recovery with runnable examples.' },
+  ],
+  docker: [
+    { name: 'GNU Radio in Docker', url: 'https://wiki.gnuradio.org/index.php/Docker', verified: '2026-11-01', build_steps: 'docker pull per wiki', requires_internet: false, notes: 'Experiment with samples-per-symbol vs symbol rate on real captures. Offline once pulled.' },
+  ],
+  hardware: [
+    { device: 'RTL-SDR receiver', role: 'Capture a real burst and estimate its baud from the shortest run', approx_cost_usd: '$30-$60', vendor_examples: 'RTL-SDR Blog V4', notes: 'Receive-only.' },
+  ],
+  citations: [
+    { type: 'book', title: 'PySDR — Synchronization', author: 'Dr. Marc Lichtman', url: 'https://pysdr.org/content/sync.html', year: 2024, verified: '2026-11-01', relevance: 'Established free resource; path asserted from prior knowledge.', fact_check_status: 'partial' },
+  ],
+  verification_notes: 'Fully in-browser; extensions are receive/analysis only.',
+};
+HANDS_ON_EXTENSION['rf-004'] = {
+  online: [
+    { name: 'GNU Radio — line coding / differential blocks', url: 'https://wiki.gnuradio.org/index.php/Differential_Encoder', cost: 'free', verified: '2026-11-01', notes: 'NRZI/differential and Manchester encode-decode as flowgraph blocks; verify your by-hand answers against them.' },
+    { name: 'PySDR — digital modulation & coding', url: 'https://pysdr.org/content/digital_modulation.html', cost: 'free', verified: '2026-11-01', notes: 'Covers line coding and why self-clocking schemes (Manchester) matter for recovery.' },
+  ],
+  docker: [
+    { name: 'GNU Radio in Docker', url: 'https://wiki.gnuradio.org/index.php/Docker', verified: '2026-11-01', build_steps: 'docker pull per wiki', requires_internet: false, notes: 'Run encode/decode round-trips. Offline once pulled.' },
+  ],
+  hardware: [
+    { device: 'No hardware required', role: 'Line coding is a pure bit-manipulation exercise', approx_cost_usd: '$0', vendor_examples: 'N/A', notes: 'Encode/decode is software-only; a receive-only SDR is optional to see coded signals in the wild.' },
+  ],
+  citations: [
+    { type: 'standard', title: 'IEEE 802.3 — Manchester encoding (10BASE-T)', author: 'IEEE', url: '', year: null, verified: '2026-11-01', relevance: 'Universally established standard; no free canonical URL cited to avoid a broken link.', fact_check_status: 'partial' },
+  ],
+  verification_notes: 'Software-only drill; no transmit tooling involved.',
+};
+HANDS_ON_EXTENSION['rf-005'] = {
+  online: [
+    { name: 'ccsdspy — read/parse CCSDS space packets in Python', url: 'https://github.com/CCSDSPy/ccsdspy', cost: 'free', verified: '2026-11-01', notes: 'The capture-before-inject discipline is about understanding frame structure first. ccsdspy parses real CCSDS telemetry framing so you can reverse a format before reasoning about integrity.' },
+    { name: 'CCSDS 355.0-B — Space Data Link Security Protocol (SDLS)', url: 'https://public.ccsds.org/Pubs/355x0b2.pdf', cost: 'free', verified: '2026-11-01', notes: 'The standard that defines the authentication, anti-replay and integrity the drill shows a naive replay failing against. This is the defensive answer to the whole exercise.' },
+    { name: 'Scapy — packet crafting & dissection (analysis)', url: 'https://scapy.net/', cost: 'free', verified: '2026-11-01', notes: 'For reading and validating frame structure/checksums during analysis. The drill focuses on understanding the format, not transmitting.' },
+  ],
+  docker: [
+    { name: 'ccsdspy via pip in any Python container', url: 'https://pypi.org/project/ccsdspy/', verified: '2026-11-01', build_steps: 'pip install ccsdspy', requires_internet: false, notes: 'Parse CCSDS frames offline. Offline after install.' },
+  ],
+  hardware: [
+    { device: 'No hardware required', role: 'Frame parsing and checksum reasoning are software-only', approx_cost_usd: '$0', vendor_examples: 'N/A', notes: 'This drill is analysis: parse a captured frame, understand sequence numbers and the integrity check. No transmit hardware is used or needed.' },
+  ],
+  citations: [
+    { type: 'tool', title: 'ccsdspy — IO interface for CCSDS data in Python', author: 'CCSDSPy maintainers', url: 'https://github.com/CCSDSPy/ccsdspy', year: 2024, verified: '2026-11-01', relevance: 'Real, maintained library (referenced in the Hacker\'s SAT index); owner/path from prior knowledge.', fact_check_status: 'partial' },
+    { type: 'standard', title: 'CCSDS 355.0-B — Space Data Link Security Protocol', author: 'CCSDS', url: 'https://public.ccsds.org/Pubs/355x0b2.pdf', year: 2022, verified: '2026-11-01', relevance: 'Authoritative CCSDS Blue Book for link-layer security; standard is established, specific PDF path not re-fetched this turn.', fact_check_status: 'partial' },
+  ],
+  verification_notes: 'Analysis-focused: parse and understand frame structure and integrity. The lab deliberately teaches the defensive lesson (why anti-replay + integrity defeat a naive replay), consistent with the single-file, no-transmit design.',
+};
+
+// ── Hands-On Extensions: PNT & GNSS Integrity (detection/analysis tooling) ───────
+HANDS_ON_EXTENSION['pnt-001'] = {
+  online: [
+    { name: 'GPSJAM — daily global GPS interference map (ADS-B derived)', url: 'https://gpsjam.org/', cost: 'free', verified: '2026-11-01', notes: 'See real jamming/degradation worldwide, updated daily from aircraft navigation-integrity reports. The operational picture behind this drill.' },
+    { name: 'gpsd — GPS daemon with NMEA/clock monitoring', url: 'https://gpsd.gitlab.io/gpsd/', cost: 'free', verified: '2026-11-01', notes: 'Read a receiver\'s live fix quality, satellite count and C/N0 — the exact signature fields this drill asks you to classify.' },
+    { name: 'NIST IR 8323r1 — Foundational PNT Profile', url: 'https://nvlpubs.nist.gov/nistpubs/ir/2023/NIST.IR.8323r1.pdf', cost: 'free', verified: '2026-11-01', notes: 'The U.S. government profile for responsible PNT use: how to detect, respond to, and build resilience against GNSS disruption. The doctrine behind the drill.' },
+  ],
+  docker: [
+    { name: 'gpsd in a container reading a receiver', url: 'https://gpsd.gitlab.io/gpsd/', verified: '2026-11-01', build_steps: 'apt/docker install gpsd; attach a USB GPS', requires_internet: false, notes: 'Monitor live fix integrity. Needs a cheap USB GPS receiver.' },
+  ],
+  hardware: [
+    { device: 'u-blox GNSS receiver (e.g. u-blox 8/9) via USB', role: 'Watch live C/N0, SV count and integrity flags; u-blox reports jamming/spoofing indicator flags', approx_cost_usd: '$20-$100', vendor_examples: 'u-blox NEO-M8/M9 USB dongles', notes: 'Modern u-blox receivers expose jamming and spoofing detection flags in their protocol — the hardware embodiment of this drill\'s classification task.' },
+  ],
+  citations: [
+    { type: 'tool', title: 'GPSJAM — GPS interference map', author: 'John Wiseman', url: 'https://gpsjam.org/', year: 2024, verified: '2026-11-01', relevance: 'Well-known public interference map derived from ADS-B NIC/NACp; URL asserted from prior knowledge.', fact_check_status: 'partial' },
+    { type: 'standard', title: 'NIST IR 8323r1 — Foundational PNT Profile', author: 'NIST', url: 'https://nvlpubs.nist.gov/nistpubs/ir/2023/NIST.IR.8323r1.pdf', year: 2023, verified: '2026-11-01', relevance: 'Authoritative U.S. PNT resilience profile; standard established, PDF not re-fetched this turn.', fact_check_status: 'partial' },
+  ],
+  verification_notes: 'Detection/analysis only. These tools read and classify a receiver\'s own integrity signature — the defender\'s view. No signal generation.',
+};
+HANDS_ON_EXTENSION['pnt-002'] = {
+  online: [
+    { name: 'RTKLIB — open-source GNSS positioning & integrity', url: 'https://www.rtklib.com/', cost: 'free', verified: '2026-11-01', notes: 'Post-process raw GNSS observations and inspect residuals — the real version of the RAIM residual analysis this drill teaches by hand.' },
+    { name: 'RTCA DO-229 / ARAIM references (aviation RAIM)', url: 'https://www.rtca.org/', cost: 'free', verified: '2026-11-01', notes: 'The aviation MOPS that certify RAIM/ARAIM for approach guidance. Why residual-based integrity monitoring is a safety-of-life requirement.' },
+  ],
+  docker: [
+    { name: 'RTKLIB (rnx2rtkp) in a container', url: 'https://github.com/tomojitakasu/RTKLIB', verified: '2026-11-01', build_steps: 'build RTKLIB; run rnx2rtkp on public RINEX', requires_internet: false, notes: 'Compute positions and residuals from public reference-station data. Offline after data download.' },
+  ],
+  hardware: [
+    { device: 'Multi-constellation GNSS receiver with raw-measurement output', role: 'Feed real pseudoranges into RAIM residual analysis', approx_cost_usd: '$30-$150', vendor_examples: 'u-blox ZED-F9P (raw/RTK), or any RINEX-logging receiver', notes: 'Raw measurements let you reproduce residual-based exclusion on real data — redundancy is what makes RAIM work.' },
+  ],
+  citations: [
+    { type: 'tool', title: 'RTKLIB — open-source GNSS program package', author: 'T. Takasu', url: 'https://www.rtklib.com/', year: 2024, verified: '2026-11-01', relevance: 'Long-established open-source GNSS toolkit; URL asserted from prior knowledge.', fact_check_status: 'partial' },
+  ],
+  verification_notes: 'Detection/engineering: RAIM is a receiver-integrity defense. Tooling here computes residuals from real or public data to exclude a bad measurement.',
+};
+HANDS_ON_EXTENSION['pnt-003'] = {
+  online: [
+    { name: 'NIST time services & holdover guidance', url: 'https://www.nist.gov/pml/time-and-frequency-division', cost: 'free', verified: '2026-11-01', notes: 'Why disciplined time with holdover (OCXO/rubidium/chip-scale atomic) is the defense against a slow clock walk.' },
+    { name: 'gpsd — PPS/time monitoring', url: 'https://gpsd.gitlab.io/gpsd/gpsd-time-service-howto.html', cost: 'free', verified: '2026-11-01', notes: 'Watch GNSS-disciplined time and detect divergence from a holdover reference — the detection side of this drill.' },
+  ],
+  docker: [
+    { name: 'chrony + gpsd time-monitoring stack', url: 'https://chrony-project.org/', verified: '2026-11-01', build_steps: 'apt install chrony gpsd', requires_internet: false, notes: 'Compare GNSS time against a local holdover oscillator and alarm on drift. Needs a GPS/PPS source.' },
+  ],
+  hardware: [
+    { device: 'GNSS timing receiver with PPS + a disciplined oscillator', role: 'Detect a timing walk by comparing GNSS time to holdover', approx_cost_usd: '$50-$300', vendor_examples: 'u-blox timing modules; chip-scale atomic clock (CSAC) for holdover', notes: 'The physical defense: when GNSS time walks, a good holdover clock reveals the divergence this drill quantifies.' },
+  ],
+  citations: [
+    { type: 'standard', title: 'NIST IR 8323r1 — Foundational PNT Profile (timing resilience)', author: 'NIST', url: 'https://nvlpubs.nist.gov/nistpubs/ir/2023/NIST.IR.8323r1.pdf', year: 2023, verified: '2026-11-01', relevance: 'Authoritative; not re-fetched this turn.', fact_check_status: 'partial' },
+  ],
+  verification_notes: 'Detection/analysis: compare GNSS-derived time against an independent holdover source to catch a gradual walk. No spoofing is performed.',
+};
+HANDS_ON_EXTENSION['pnt-004'] = {
+  online: [
+    { name: 'GPSJAM (aviation) + MarineTraffic/AIS anomaly feeds', url: 'https://gpsjam.org/', cost: 'free', verified: '2026-11-01', notes: 'Correlate GNSS interference with the aviation (ADS-B) and maritime (AIS) effects this drill separates by root cause.' },
+    { name: 'DHS / CISA PNT resilience resources', url: 'https://www.cisa.gov/topics/cybersecurity-best-practices/space-systems', cost: 'free', verified: '2026-11-01', notes: 'Cross-sector guidance: the same PNT attack shows up differently in aviation, maritime and space.' },
+  ],
+  docker: [
+    { name: 'dump1090 (ADS-B) + gpsd — observe real cooperative-surveillance anomalies', url: 'https://github.com/flightaware/dump1090', verified: '2026-11-01', build_steps: 'docker run dump1090 with an RTL-SDR', requires_internet: false, notes: 'See ADS-B message behavior and GNSS fix behavior side by side (receive-only). Needs an RTL-SDR.' },
+  ],
+  hardware: [
+    { device: 'RTL-SDR (ADS-B 1090 MHz, AIS 162 MHz) + GNSS receiver', role: 'Observe message-spoof vs position-spoof vs jamming signatures in real feeds', approx_cost_usd: '$30-$80', vendor_examples: 'RTL-SDR Blog V4 + u-blox GNSS', notes: 'Receive-only. Watch cooperative-surveillance and GNSS integrity at once to practice root-cause separation.' },
+  ],
+  citations: [
+    { type: 'tool', title: 'dump1090 — ADS-B receiver/decoder', author: 'FlightAware', url: 'https://github.com/flightaware/dump1090', year: 2024, verified: '2026-11-01', relevance: 'Widely-used open-source ADS-B decoder; owner/path from prior knowledge.', fact_check_status: 'partial' },
+  ],
+  verification_notes: 'Detection/analysis across domains using receive-only tooling. Teaches attribution, not attack.',
+};
+HANDS_ON_EXTENSION['pnt-005'] = {
+  online: [
+    { name: 'CRPA / antenna-array anti-spoof background (GPS World, academic)', url: 'https://www.gpsworld.com/', cost: 'free', verified: '2026-11-01', notes: 'How controlled-reception-pattern antennas and arrays reject signals by direction — the physical-layer defense this drill models.' },
+    { name: 'GNSS-SDR — open-source GNSS software receiver', url: 'https://gnss-sdr.org/', cost: 'free', verified: '2026-11-01', notes: 'A research receiver whose architecture supports experimenting with multi-antenna and signal-quality monitoring for spoof detection.' },
+  ],
+  docker: [
+    { name: 'GNSS-SDR in Docker (receiver/analysis)', url: 'https://github.com/gnss-sdr/gnss-sdr', verified: '2026-11-01', build_steps: 'docker pull gnsssdr/gnss-sdr', requires_internet: false, notes: 'Run a software GNSS receiver on public IQ recordings to study signal-quality and acquisition anomalies. Offline after data.' },
+  ],
+  hardware: [
+    { device: 'Multi-element GNSS antenna / CRPA (research)', role: 'Reject spoofed signals by angle-of-arrival', approx_cost_usd: '$100-$$$', vendor_examples: 'Research CRPA arrays; dual-antenna u-blox for heading', notes: 'The hardware behind this drill: a single spoofer antenna betrays itself by common bearing; an array separates real satellites by direction.' },
+  ],
+  citations: [
+    { type: 'tool', title: 'GNSS-SDR — open-source GNSS software receiver', author: 'C. Fernández-Prades et al.', url: 'https://gnss-sdr.org/', year: 2024, verified: '2026-11-01', relevance: 'Confirmed this session; open-source software GNSS receiver.', fact_check_status: 'verified' },
+  ],
+  verification_notes: 'Detection/engineering: angle-of-arrival and signal-quality monitoring are receiver-side anti-spoof defenses. Tooling is receive/analysis.',
+};
+
 
 // ── ORIENTATION ──────────────────────────────────────────────────────────────
 COMPLIANCE['o-001'] = {
@@ -21546,8 +21718,8 @@ META['has4-003'].hints = [
 
 
 
-const BUILD_ID = 'AS-29.18';
-const BUILD_UTC = '2026-11-01T23:56:35Z';
+const BUILD_ID = 'AS-29.19';
+const BUILD_UTC = '2026-11-02T01:25:20Z';
 // ═══════════════════════════════════════════════════════════════════════════════
 // RF FOUNDATIONS TRACK (Phase 3) — original, fully in-browser signal-reading drills
 // ═══════════════════════════════════════════════════════════════════════════════
