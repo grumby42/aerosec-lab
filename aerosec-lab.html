@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroSec Lab</title>
-<!-- AeroSec Lab | build:AS-29.19 | shipped:2026-11-02T01:25:20utc | head:29 +RF & PNT Hands-On Extensions (receive/analysis + detection tooling) -->
+<!-- AeroSec Lab | build:AS-29.20 | shipped:2026-11-02T01:30:24utc | head:29 +Ground Station OT/ICS track ot-001 (antenna positioner PLC, IEC 62443) -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* AeroSec Lab — Stylesheet                                                  */
@@ -4385,6 +4385,7 @@ const TRACKS = [
   {id:'pnt',         name:'PNT & GNSS Integrity',        icon:'🌐', color:'#14b8a6', desc:'GNSS is the shared dependency of space, aviation and maritime — and its most attacked. Jamming vs spoofing, RAIM, and the stealthy timing walk: one skill set across all three domains.', unlock:'rf'},
   {id:'controls',    name:'Security Controls (NIST 800-53)', icon:'📋', color:'#818cf8', desc:'The Day-4 competency: tailoring NIST SP 800-53 for space. Map attacks to controls, and decide apply / tailor / not-applicable for on-orbit assets.', unlock:'launchpad'},
   {id:'detection',   name:'Detection Engineering',       icon:'🛰️', color:'#f472b6', desc:'Monitor the vehicle, not just the link. SpaceCOP-style onboard detection of anomalous commanding from SPARTA Indicators of Behavior.', unlock:'launchpad'},
+  {id:'ot',          name:'Ground Station OT/ICS',       icon:'🏭', color:'#fb7185', desc:'The ground station is operational technology: PLCs drive antenna positioners, power and timing. Defend the Modbus control network with IEC 62443 zones, function-code policy and interlocks.', unlock:'launchpad'},
   {id:'adsb',        name:'ADS-B Aviation Security',    icon:'✈️', color:'#38bdf8', desc:'Anomalous ADS-B transmissions detected over the North Atlantic. Analyze the protocol, decode messages, and determine if these signals are legitimate or spoofed.', unlock:'launchpad'},
   {id:'aaaa',        name:'Astrodynamics & Orbital Mechanics', icon:'🌍', color:'#60a5fa', desc:'You have been assigned to the Orbital Mechanics desk. Every challenge is a calculation real operators perform daily. Get these wrong and you lose contact with a $200M asset.', unlock:'launchpad'},
   {id:'adcs',        name:'ADCS — Attitude & Control',  icon:'🧭', color:'#a78bfa', desc:'Attitude determination and control: the satellite knows where it is and which way it points. A compromised ADCS means a satellite that cannot aim its antenna, camera, or solar panels.', unlock:'aaaa'},
@@ -4420,6 +4421,8 @@ const CATALOG = [
   {id:'controls-002', track:'controls', type:'micro', year:null, name:'Tailor for Space',       sub:'Apply / tailor / not-applicable — 800-53 for on-orbit assets', diff:3, xp:150, mins:25, engine:'native'},
   // ── DETECTION ENGINEERING ────────────────────────────────────────────────────
   {id:'det-001', track:'detection', type:'micro', year:2026, name:'Onboard IOB Detection',  sub:'SpaceCOP-style: which IOB rule fires on an onboard command log', diff:2, xp:125, mins:20, engine:'native'},
+  // ── GROUND STATION OT/ICS ────────────────────────────────────────────────────
+  {id:'ot-001', track:'ot', type:'qualifier', year:null, name:'Antenna Positioner PLC', sub:'Find the Modbus write that breaks envelope / 62443 zone / FC policy / interlock', diff:3, xp:175, mins:30, engine:'native'},
   // ── AAAA ─────────────────────────────────────────────────────────────────────
   {id:'aaaa-001', track:'aaaa', type:'qualifier', year:2020, name:"Where's the Sat?",            sub:'SGP4 propagation — period, altitude, or velocity from TLE',     diff:2, xp:100, mins:40, engine:'native'},
   {id:'aaaa-002', track:'aaaa', type:'qualifier', year:2020, name:'Antenna Pointing',            sub:'Compute azimuth and elevation to acquire the satellite',         diff:2, xp:100, mins:40, engine:'native'},
@@ -21718,8 +21721,8 @@ META['has4-003'].hints = [
 
 
 
-const BUILD_ID = 'AS-29.19';
-const BUILD_UTC = '2026-11-02T01:25:20Z';
+const BUILD_ID = 'AS-29.20';
+const BUILD_UTC = '2026-11-02T01:30:24Z';
 // ═══════════════════════════════════════════════════════════════════════════════
 // RF FOUNDATIONS TRACK (Phase 3) — original, fully in-browser signal-reading drills
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -22780,6 +22783,151 @@ SPARTA_TAGS['det-001'] = {
 };
 
 COMPLIANCE['det-001'] = { posture: 'detection', frameworks: [{ id: 'SPARTA-CM0034', name: 'SPARTA CM0034: Monitor Critical Telemetry/Audit Logs', note: 'Onboard detection of anomalous commanding.' }, { id: 'NIST-800-53-SI-4', name: 'NIST 800-53 — SI-4: System Monitoring', note: 'Monitoring tailored to the space segment (onboard, store-and-forward).' }, { id: 'NIST-800-53-AU-6', name: 'NIST 800-53 — AU-6: Audit Record Review, Analysis, and Reporting', note: 'Reviewing the onboard command/audit log.' }], references: [{ type: 'article', title: 'Aerospace Corp — Experience the convergence of space and cyber threats at DEF CON 34 (SpaceCOP)', url: 'https://aerospace.org/kickstage/experience-convergence-space-and-cyber-threats-def-con-34', year: 2026 }, { type: 'article', title: 'SPARTA v4.0 — Breaking New Ground (SpaceCOP section)', url: 'https://medium.com/the-aerospace-corporation/sparta-v4-0-breaking-new-ground-b2d3b7ab832f', year: 2026 }] };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GROUND STATION OT/ICS TRACK — antenna-positioner PLC defense.
+// A ground station is real OT: PLCs drive antenna az/el positioners over Modbus.
+// This drill is a DEFENDER's task — read a Modbus write log against the safe
+// operating envelope, the zones-and-conduits boundary (IEC 62443), and the Modbus
+// function-code policy, and name the one write that violates a rule.
+// ═══════════════════════════════════════════════════════════════════════════════
+CHALLENGES['ot-001'] = {
+  name: 'Antenna Positioner PLC',
+  generate(seed) {
+    const rng = mkRng(seed);
+    const HORIZON = rng.choice([3, 5, 8, 10]);          // deg horizon mask
+    const MAXSLEW = rng.choice([3, 5, 8]);              // deg/s
+    const CTRL = '10.20.30';                            // control zone /24
+    const IT = '10.10.' + rng.int(1, 40);              // enterprise IT subnet (should never write)
+    const kind = rng.choice(['ENVELOPE', 'ZONE', 'FUNCTION', 'INTERLOCK']);
+    // register map (symbolic)
+    const REG = { AZ: 40001, EL: 40002, SLEW: 40003, ENABLE: 1, OVERRIDE: 2 };
+    const NAME = { 40001: 'AZ_SETPOINT', 40002: 'EL_SETPOINT', 40003: 'SLEW_RATE', 1: 'MOTION_ENABLE', 2: 'HORIZON_OVERRIDE' };
+    const FCNAME = { 5: 'WriteCoil', 6: 'WriteReg', 8: 'Diagnostics', 16: 'WriteMultiRegs' };
+
+    const rows = [];
+    let tick = rng.int(100, 400);
+    const push = (src, fc, reg, val) => { tick += rng.int(1, 4); rows.push({ tick, src, fc, reg, val }); };
+    // a clean interlock + motion baseline from the control zone
+    push(CTRL + '.' + rng.int(10, 50), 5, REG.ENABLE, 1);                 // enable
+    push(CTRL + '.' + rng.int(10, 50), 6, REG.SLEW, rng.int(1, MAXSLEW) * 10);
+    push(CTRL + '.' + rng.int(10, 50), 6, REG.AZ, rng.int(0, 359) * 10);
+    push(CTRL + '.' + rng.int(10, 50), 6, REG.EL, rng.int(HORIZON + 2, 85) * 10);
+    push(CTRL + '.' + rng.int(10, 50), 6, REG.AZ, rng.int(0, 359) * 10);
+
+    // inject ONE violation
+    let anom, detail;
+    if (kind === 'ENVELOPE') {
+      const bad = rng.int(-10, HORIZON - 1); // elevation below the horizon mask -> dish into the ground/obstructions
+      anom = { tick: tick + rng.int(1, 3), src: CTRL + '.' + rng.int(10, 50), fc: 6, reg: REG.EL, val: bad * 10 };
+      detail = `EL_SETPOINT ${bad}° is below the ${HORIZON}° horizon mask — a safe-envelope violation that would drive the dish into the ground/obstructions.`;
+    } else if (kind === 'ZONE') {
+      anom = { tick: tick + rng.int(1, 3), src: IT + '.' + rng.int(2, 250), fc: 6, reg: REG.AZ, val: rng.int(0, 359) * 10 };
+      detail = `A write to AZ_SETPOINT sourced from the enterprise IT subnet (${IT}.x), not the control zone ${CTRL}.0/24 — a zones-and-conduits (segmentation) violation.`;
+    } else if (kind === 'FUNCTION') {
+      anom = { tick: tick + rng.int(1, 3), src: CTRL + '.' + rng.int(10, 50), fc: 8, reg: 0, val: rng.int(1, 9) };
+      detail = `A Modbus Diagnostics (FC08) request against a positioner PLC whose policy allows only WriteCoil (FC05) and WriteReg (FC06) — an unexpected-function-code violation.`;
+    } else { // INTERLOCK
+      anom = { tick: tick + rng.int(1, 3), src: CTRL + '.' + rng.int(10, 50), fc: 6, reg: REG.AZ, val: rng.int(0, 359) * 10 };
+      rows[0].val = 0; // enable was never actually set (shown as 0)
+      detail = `A motion command (AZ_SETPOINT) issued while MOTION_ENABLE is 0 — the interlock sequence was not satisfied before commanding motion.`;
+    }
+    rows.push(anom);
+    rows.sort((a, b) => a.tick - b.tick);
+
+    let table = ' tick │ source          │ FC            │ register           │ value\n──────┼─────────────────┼───────────────┼────────────────────┼───────\n';
+    rows.forEach(r => {
+      const rn = r.reg === 0 ? '—' : `${r.reg} ${NAME[r.reg] || ''}`;
+      table += ` ${String(r.tick).padStart(4)} │ ${r.src.padEnd(15)} │ ${(r.fc + ' ' + (FCNAME[r.fc] || '')).padEnd(13)} │ ${rn.padEnd(18)} │ ${String(r.val).padStart(5)}\n`;
+    });
+
+    // simple az/el gauge SVG (elevation vs horizon mask)
+    const showEl = kind === 'ENVELOPE' ? (anom.val / 10) : rng.int(HORIZON + 2, 85);
+    const elY = 150 - (Math.max(-10, Math.min(90, showEl)) / 90) * 120;
+    const maskY = 150 - (HORIZON / 90) * 120;
+    let svg = '<svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:340px;margin:10px auto;display:block">';
+    svg += '<rect width="320" height="170" fill="#0a0e17" rx="6"/>';
+    svg += `<rect x="30" y="${maskY.toFixed(0)}" width="260" height="${(150 - maskY).toFixed(0)}" fill="rgba(239,68,68,0.10)"/>`;
+    svg += `<line x1="30" y1="${maskY.toFixed(0)}" x2="290" y2="${maskY.toFixed(0)}" stroke="#ef4444" stroke-dasharray="4 3"/>`;
+    svg += `<text x="34" y="${(maskY - 4).toFixed(0)}" fill="#ef4444" font-size="9" font-family="monospace">horizon mask ${HORIZON}°</text>`;
+    svg += '<line x1="30" y1="150" x2="290" y2="150" stroke="#334155"/>';
+    svg += `<line x1="60" y1="150" x2="${(60 + 110 * Math.cos((1 - showEl / 90) * Math.PI / 2)).toFixed(0)}" y2="${elY.toFixed(0)}" stroke="#4dabf7" stroke-width="3"/>`;
+    svg += `<circle cx="60" cy="150" r="4" fill="#4dabf7"/>`;
+    svg += `<text x="150" y="165" fill="#64748b" font-size="9" font-family="monospace" text-anchor="middle">commanded elevation vs safe horizon mask</text>`;
+    svg += '</svg>';
+
+    const problem = svg + `\nCHALLENGE: ANTENNA POSITIONER PLC
+
+A ground-station antenna is driven by a PLC over Modbus. You are the OT defender
+reviewing the write log against three rules:
+
+  ENVELOPE  — EL_SETPOINT must stay at or above the ${HORIZON}° horizon mask
+              (and ≤ 90°); SLEW_RATE ≤ ${MAXSLEW}°/s
+  ZONE      — writes may come only from the control zone ${CTRL}.0/24
+              (IEC 62443 zones & conduits; enterprise IT must never write)
+  FUNCTION  — policy allows only FC05 WriteCoil and FC06 WriteReg
+  INTERLOCK — MOTION_ENABLE (coil 1) must be 1 before any motion command
+
+MODBUS WRITE LOG:
+
+${table}
+Exactly one write violates one rule. Name the rule and the tick.
+
+ANSWER: RULE,tick  (e.g. ZONE,${rows[0].tick})`;
+
+    return {
+      problem,
+      exp: {
+        ans: `${kind},${anom.tick}`,
+        check: (a) => {
+          const m = String(a || '').toUpperCase().match(/(ENVELOPE|ZONE|FUNCTION|FUNC|INTERLOCK)[^0-9]*(\d+)/);
+          if (!m) return false;
+          const k = m[1] === 'FUNC' ? 'FUNCTION' : m[1];
+          return k === kind && parseInt(m[2], 10) === anom.tick;
+        },
+      },
+      meta: { kind, tick: anom.tick, HORIZON, MAXSLEW, detail },
+    };
+  },
+  hints: [
+    'Check each write against all three rules plus the interlock: is the value inside the safe envelope, is the source in the control zone, is the function code allowed, and was MOTION_ENABLE set first?',
+    'Most rows are legitimate: control-zone source, FC05/FC06, setpoints inside the envelope, enable set before motion. Find the single row that breaks one rule.',
+    'Elevation below the horizon mask → ENVELOPE. A source outside 10.20.30.0/24 → ZONE. A function code other than 05/06 → FUNCTION. Motion while MOTION_ENABLE is 0 → INTERLOCK.',
+    'Report the rule name and that row\'s tick, e.g. "ENVELOPE,312".',
+  ],
+};
+
+META['ot-001'] = {
+  brief: `A ground station is operational technology: PLCs drive the antenna az/el positioner over Modbus. As the OT defender, review the write log and find the one command that violates the safe envelope, the IEC 62443 zone boundary, the function-code policy, or the motion interlock.<br><br><strong>Answer format:</strong> RULE,tick.`,
+  debrief: `Ground-segment OT is where space meets ICS, and it is a named gap in most space-cyber training. The four rules here are the ground-station versions of standard ICS controls: a <em>safe operating envelope</em> (you cannot point a multi-tonne dish below its horizon mask without hitting the ground or a building), <em>zones and conduits</em> (IEC 62443 — the enterprise IT network must never issue a positioner command; that is exactly the IT→OT boundary the KA-SAT class of incident crossed), a <em>function-code allowlist</em> (Modbus has no authentication, so policy enforcement lives in the conduit), and <em>interlocks</em> (motion only after enable). The SANS Five ICS Critical Controls and SPARTA v4.0's ground-segment defense-in-depth layers both formalize this. Antenna positioners, HVAC, power and timing at a ground station are all PLC-driven — all in scope.`,
+  objectives: ['Read a Modbus write log against an ICS safe operating envelope', 'Apply IEC 62443 zones-and-conduits to a ground-station control network', 'Enforce a Modbus function-code allowlist and a motion interlock', 'Recognize an enterprise-IT write to an OT device as a segmentation failure'],
+  pass: 'Name the correct rule and tick.',
+  fail: 'Flagging a legitimate control-zone setpoint as an anomaly, or missing that an IT-sourced write is a zone violation even when its value looks reasonable.',
+  concepts: ['OT/ICS', 'Modbus', 'IEC 62443', 'zones and conduits', 'safe operating envelope', 'interlock', 'ground segment', 'antenna positioner'],
+  tools: ['no external tools needed for this drill'],
+  aegis: 'Walk the log row by row against envelope / zone / function / interlock. Exactly one row breaks one rule. Answer RULE,tick.',
+};
+
+SPARTA_TAGS['ot-001'] = {
+  techniques: [
+    { id: 'IA-0007', name: 'Compromise Ground System', tactic: 'Initial Access', tactic_id: 'ST0003', url: 'https://sparta.aerospace.org/technique/IA-0007/', status: 'verified', note: 'The antenna-positioner PLC is part of the ground system; an IT-sourced or out-of-policy write is the ground-segment compromise this detects.' },
+  ],
+  countermeasures: [
+    { id: 'CM0038', name: 'Segmentation', url: 'https://sparta.aerospace.org/countermeasures/CM0038/', status: 'partial' },
+    { id: 'CM0034', name: 'Monitor Critical Telemetry/Audit Logs', url: 'https://sparta.aerospace.org/countermeasures/CM0034/', status: 'partial' },
+  ],
+  note: 'Ground-segment OT defense: SPARTA v4.0 added ground-segment defense-in-depth layers (Perimeter, Network, Endpoint) that this Modbus-policy drill exercises directly. IEC 62443 zones-and-conduits is the ICS framework behind it.',
+};
+
+COMPLIANCE['ot-001'] = { posture: 'engineering', frameworks: [
+  { id: 'IEC-62443-3-3', name: 'IEC/ISA 62443-3-3 — System Security Requirements (Zones & Conduits)', note: 'SR 5.1 Network Segmentation and SR 7 Resource Availability: the control zone must be isolated from enterprise IT, and only approved conduits may carry writes.' },
+  { id: 'IEC-62443-SR-2.1', name: 'IEC 62443-3-3 SR 2.1 — Authorization Enforcement', note: 'Only the control zone may issue positioner commands; function-code allowlisting enforces it on an unauthenticated protocol.' },
+  { id: 'NIST-800-82', name: 'NIST SP 800-82 Rev 3 — Guide to OT Security', note: 'Safe operating envelope and interlocks are core OT safety/security controls.' },
+  { id: 'SANS-ICS-5CC', name: 'SANS Five ICS Critical Controls', note: 'ICS network visibility/monitoring (Control 2) and a defensible architecture (Control 1).' },
+], references: [
+  { type: 'standard', title: 'NIST SP 800-82 Rev 3 — Guide to Operational Technology (OT) Security', url: 'https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-82r3.pdf', year: 2023 },
+  { type: 'standard', title: 'SANS — The Five ICS Cybersecurity Critical Controls', url: 'https://www.sans.org/white-papers/five-ics-cybersecurity-critical-controls/', year: null },
+] };
 
 const App = {
   curTrack: 'orientation',
