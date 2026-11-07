@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroSec Lab</title>
-<!-- AeroSec Lab | build:AS-29.20 | shipped:2026-11-02T01:30:24utc | head:29 +Ground Station OT/ICS track ot-001 (antenna positioner PLC, IEC 62443) -->
+<!-- AeroSec Lab | build:AS-29.21 | shipped:2026-11-07T18:10:09utc | head:29 +Applied Crypto track crypto-001 (fleet key blast radius) -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* AeroSec Lab — Stylesheet                                                  */
@@ -4386,6 +4386,7 @@ const TRACKS = [
   {id:'controls',    name:'Security Controls (NIST 800-53)', icon:'📋', color:'#818cf8', desc:'The Day-4 competency: tailoring NIST SP 800-53 for space. Map attacks to controls, and decide apply / tailor / not-applicable for on-orbit assets.', unlock:'launchpad'},
   {id:'detection',   name:'Detection Engineering',       icon:'🛰️', color:'#f472b6', desc:'Monitor the vehicle, not just the link. SpaceCOP-style onboard detection of anomalous commanding from SPARTA Indicators of Behavior.', unlock:'launchpad'},
   {id:'ot',          name:'Ground Station OT/ICS',       icon:'🏭', color:'#fb7185', desc:'The ground station is operational technology: PLCs drive antenna positioners, power and timing. Defend the Modbus control network with IEC 62443 zones, function-code policy and interlocks.', unlock:'launchpad'},
+  {id:'crypto',      name:'Applied Crypto & Keys',       icon:'🔑', color:'#c084fc', desc:'Keys get extracted from captured hardware — that is a given. The design question is blast radius: per-device derivation and hardware roots of trust so one compromise is not a fleet-wide event.', unlock:'launchpad'},
   {id:'adsb',        name:'ADS-B Aviation Security',    icon:'✈️', color:'#38bdf8', desc:'Anomalous ADS-B transmissions detected over the North Atlantic. Analyze the protocol, decode messages, and determine if these signals are legitimate or spoofed.', unlock:'launchpad'},
   {id:'aaaa',        name:'Astrodynamics & Orbital Mechanics', icon:'🌍', color:'#60a5fa', desc:'You have been assigned to the Orbital Mechanics desk. Every challenge is a calculation real operators perform daily. Get these wrong and you lose contact with a $200M asset.', unlock:'launchpad'},
   {id:'adcs',        name:'ADCS — Attitude & Control',  icon:'🧭', color:'#a78bfa', desc:'Attitude determination and control: the satellite knows where it is and which way it points. A compromised ADCS means a satellite that cannot aim its antenna, camera, or solar panels.', unlock:'aaaa'},
@@ -4423,6 +4424,8 @@ const CATALOG = [
   {id:'det-001', track:'detection', type:'micro', year:2026, name:'Onboard IOB Detection',  sub:'SpaceCOP-style: which IOB rule fires on an onboard command log', diff:2, xp:125, mins:20, engine:'native'},
   // ── GROUND STATION OT/ICS ────────────────────────────────────────────────────
   {id:'ot-001', track:'ot', type:'qualifier', year:null, name:'Antenna Positioner PLC', sub:'Find the Modbus write that breaks envelope / 62443 zone / FC policy / interlock', diff:3, xp:175, mins:30, engine:'native'},
+  // ── APPLIED CRYPTO & KEYS ─────────────────────────────────────────────────────
+  {id:'crypto-001', track:'crypto', type:'micro', year:2026, name:'Fleet Key Blast Radius', sub:'How many units fall when one device secret is extracted', diff:2, xp:125, mins:20, engine:'native'},
   // ── AAAA ─────────────────────────────────────────────────────────────────────
   {id:'aaaa-001', track:'aaaa', type:'qualifier', year:2020, name:"Where's the Sat?",            sub:'SGP4 propagation — period, altitude, or velocity from TLE',     diff:2, xp:100, mins:40, engine:'native'},
   {id:'aaaa-002', track:'aaaa', type:'qualifier', year:2020, name:'Antenna Pointing',            sub:'Compute azimuth and elevation to acquire the satellite',         diff:2, xp:100, mins:40, engine:'native'},
@@ -21721,8 +21724,8 @@ META['has4-003'].hints = [
 
 
 
-const BUILD_ID = 'AS-29.20';
-const BUILD_UTC = '2026-11-02T01:30:24Z';
+const BUILD_ID = 'AS-29.21';
+const BUILD_UTC = '2026-11-07T18:10:09Z';
 // ═══════════════════════════════════════════════════════════════════════════════
 // RF FOUNDATIONS TRACK (Phase 3) — original, fully in-browser signal-reading drills
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -22927,6 +22930,107 @@ COMPLIANCE['ot-001'] = { posture: 'engineering', frameworks: [
 ], references: [
   { type: 'standard', title: 'NIST SP 800-82 Rev 3 — Guide to Operational Technology (OT) Security', url: 'https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-82r3.pdf', year: 2023 },
   { type: 'standard', title: 'SANS — The Five ICS Cybersecurity Critical Controls', url: 'https://www.sans.org/white-papers/five-ics-cybersecurity-critical-controls/', year: null },
+] };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FLEET KEY HYGIENE (crypto-001) — the "shared secret" lesson, taught defensively.
+// A recovered device secret should compromise ONE unit, not a constellation. The
+// learner inspects a fleet's key-provisioning scheme and decides the blast radius:
+// how many units fall if one device's stored secret is extracted. The fix is
+// per-device key derivation + hardware root of trust, not secrecy of the key.
+// ═══════════════════════════════════════════════════════════════════════════════
+CHALLENGES['crypto-001'] = {
+  name: 'Fleet Key Blast Radius',
+  generate(seed) {
+    const rng = mkRng(seed);
+    const FLEET = rng.choice([24, 40, 60, 100, 128]);
+    // provisioning schemes, each with a blast radius if ONE device secret is recovered
+    const schemes = [
+      { key: 'GLOBAL',   title: 'One global key flashed into every unit at the factory', radius: () => FLEET,
+        why: `Every unit holds the same secret, so recovering it from one device forges/decrypts for ALL ${FLEET}. Blast radius = the whole fleet. This is the "one to rule them all" failure.`,
+        fix: 'Per-device keys derived from a master + unique device ID, or independently provisioned; never a single shared key.' },
+      { key: 'GROUPED',  title: 'A shared key per production batch', radius: () => Math.ceil(FLEET / rng.choice([4, 5, 8])),
+        why: `Units share a key within their batch. One recovered secret compromises its whole batch, not the fleet — better than global, still far too wide.`,
+        fix: 'Narrow the sharing to one key per device; batch keys only shrink the blast radius, they do not remove it.' },
+      { key: 'DERIVED',  title: 'Per-device key = KDF(master_secret, device_id), master only in an HSM', radius: () => 1,
+        why: `Each unit holds only its own derived key; the master never leaves the HSM. Recovering one device's key compromises exactly that one unit. Blast radius = 1.`,
+        fix: 'This is the target design. Pair with a hardware root of trust so the per-device key cannot be trivially read out.' },
+      { key: 'UNIQUE',   title: 'Independent random key per unit, stored in a secure element', radius: () => 1,
+        why: `Keys are unrelated across units and held in tamper-resistant hardware. One extraction = one unit. Blast radius = 1.`,
+        fix: 'Already the strong design; ensure key rotation and revocation exist for when a unit is lost.' },
+    ];
+    const sc = schemes[rng.int(0, schemes.length - 1)];
+    const radius = sc.radius();
+    const rotation = rng.choice(['no key rotation; keys are fixed for the life of the unit', 'keys can be rotated over an authenticated channel', 'no revocation path for a lost/captured unit']);
+
+    const problem = `CHALLENGE: FLEET KEY BLAST RADIUS
+
+A fleet of ${FLEET} identical units (think a drone swarm or a satellite constellation)
+authenticates its command link with a stored cryptographic secret. An adversary who
+physically captures ONE unit can extract that unit's stored secret.
+
+The question a defender must answer before fielding the fleet: if one device's secret
+is recovered, HOW MANY units are compromised?
+
+PROVISIONING SCHEME:
+  ${sc.title}
+  Additional note: ${rotation}
+
+Blast radius = the number of units an attacker can forge/decrypt for after recovering
+ONE device's stored secret.
+
+ANSWER: the blast radius, as a number (units out of ${FLEET}).`;
+
+    return {
+      problem,
+      exp: {
+        ans: String(radius),
+        check: (a) => {
+          const m = String(a || '').match(/\d+/);
+          return m ? parseInt(m[0], 10) === radius : false;
+        },
+      },
+      meta: { scheme: sc.key, FLEET, radius, why: sc.why, fix: sc.fix },
+    };
+  },
+  hints: [
+    'Ask one question: how many units share the secret that lives on the captured device?',
+    'If every unit holds the SAME key, recovering it compromises all of them — blast radius = the whole fleet.',
+    'If the key is per-batch, the blast radius is the batch size. If it is per-device (derived or independent), recovering one key compromises exactly one unit.',
+    'A key derived as KDF(master, device_id) with the master kept in an HSM, or an independent key in a secure element, gives a blast radius of 1.',
+  ],
+};
+
+META['crypto-001'] = {
+  brief: `A captured device gives up its stored secret — that is a given in the field. The design question is the <em>blast radius</em>: does one extraction compromise one unit, or the whole fleet? Read the key-provisioning scheme and give the number.<br><br><strong>Answer format:</strong> a number.`,
+  debrief: `This is the defensive lesson behind every "shared secret across the fleet" challenge: security cannot depend on the key staying unextractable, because a fielded unit can be captured and read. It must depend on the <em>blast radius</em> being small. A single global key flashed into every unit is the catastrophic pattern — one extraction forges commands for the entire constellation (SPARTA PER-0004, Replace Cryptographic Keys, becomes a fleet-wide event). The fix is per-device key derivation — KDF(master, device_id) with the master sealed in an HSM — or independent per-unit keys in a secure element / hardware root of trust, plus rotation and a revocation path for lost units. This is "Crypto as a lifecycle" from the operator best-practices guidance, applied to constellations and swarms.`,
+  objectives: ['Reason about key-provisioning blast radius, not just key secrecy', 'Distinguish global, per-batch, derived, and independent per-device keys', 'Recognize per-device derivation + hardware root of trust as the target design', 'Connect fleet key reuse to constellation/swarm-wide compromise'],
+  pass: 'Give the correct blast radius.',
+  fail: 'Assuming a strong cipher makes key reuse safe — the weakness is the sharing, not the algorithm. A global key has a fleet-wide blast radius regardless of cipher strength.',
+  concepts: ['key management', 'key derivation', 'HSM', 'hardware root of trust', 'secure element', 'blast radius', 'constellation', 'swarm'],
+  tools: ['no external tools needed for this drill'],
+  aegis: 'Count how many units share the captured device\'s key: global = whole fleet, batch = batch size, per-device (derived or independent) = 1. That count is the blast radius.',
+};
+
+SPARTA_TAGS['crypto-001'] = {
+  techniques: [
+    { id: 'REC-0001.03', name: 'Gather Spacecraft Design Information: Cryptographic Algorithms', tactic: 'Reconnaissance', tactic_id: 'ST0001', url: 'https://sparta.aerospace.org/technique/REC-0001/03/', status: 'verified', note: 'Understanding the key-provisioning scheme is design reconnaissance; a shared key is the weakness an adversary looks for.' },
+  ],
+  countermeasures: [
+    { id: 'CM0031', name: 'Authentication', url: 'https://sparta.aerospace.org/countermeasures/CM0031/', status: 'partial' },
+    { id: 'CM0033', name: 'Relay Protection', url: 'https://sparta.aerospace.org/countermeasures/CM0033/', status: 'partial' },
+  ],
+  note: 'Fleet key hygiene: per-device derivation + hardware root of trust bounds the blast radius of a captured unit. Relates to SPARTA PER-0004 (Replace Cryptographic Keys) — a shared key turns one key-replacement into a fleet-wide event.',
+};
+
+COMPLIANCE['crypto-001'] = { posture: 'engineering', frameworks: [
+  { id: 'NIST-SP-800-57', name: 'NIST SP 800-57 — Key Management', note: 'Key separation and limiting the amount of data/devices protected by a single key.' },
+  { id: 'NIST-FIPS-140-3', name: 'FIPS 140-3 — Cryptographic Module (HSM / secure element)', note: 'Hardware-protected key storage and derivation.' },
+  { id: 'NIST-800-53-SC-12', name: 'NIST 800-53 — SC-12: Cryptographic Key Establishment and Management', note: 'Per-device keys, rotation, and revocation.' },
+  { id: 'SPARTA-CM0031', name: 'SPARTA CM0031: Authentication', note: 'Command-link authentication whose strength depends on key hygiene.' },
+], references: [
+  { type: 'standard', title: 'NIST SP 800-57 Part 1 Rev 5 — Recommendation for Key Management', url: 'https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-57pt1r5.pdf', year: 2020 },
+  { type: 'standard', title: 'NASA / CISA — Space Security Best Practices (crypto as a lifecycle)', url: 'https://www.cisa.gov/topics/cybersecurity-best-practices/space-systems', year: 2024 },
 ] };
 
 const App = {
