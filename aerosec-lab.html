@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroSec Lab</title>
-<!-- AeroSec Lab | build:AS-29.21 | shipped:2026-11-07T18:10:09utc | head:29 +Applied Crypto track crypto-001 (fleet key blast radius) -->
+<!-- AeroSec Lab | build:AS-29.22 | shipped:2026-11-07T18:21:26utc | head:29 +PNT capstone pnt-006 (integrated spoof verdict, diff 4) -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* AeroSec Lab — Stylesheet                                                  */
@@ -4417,6 +4417,7 @@ const CATALOG = [
   {id:'pnt-003', track:'pnt', type:'micro', year:null, name:'PNT Time Spoof',                 sub:'Compute the accumulated offset of a slow clock-walk spoof', diff:2, xp:100, mins:20, engine:'native'},
   {id:'pnt-004', track:'pnt', type:'micro', year:null, name:'Cross-Domain Root Cause',        sub:'Position vs time vs message spoof vs jamming, across domains', diff:3, xp:150, mins:25, engine:'native'},
   {id:'pnt-005', track:'pnt', type:'micro', year:null, name:'AoA Spoof Discrimination',       sub:'Find the single-antenna spoofer by angle-of-arrival cluster', diff:3, xp:150, mins:25, engine:'native'},
+  {id:'pnt-006', track:'pnt', type:'capstone', year:2026, name:'Integrated Spoof Verdict',      sub:'Capstone: chain RAIM + AoA + cross-check to a verdict; defeat the coordinated spoof', diff:4, xp:250, mins:40, engine:'native'},
   // ── SECURITY CONTROLS (NIST 800-53) ──────────────────────────────────────────
   {id:'controls-001', track:'controls', type:'micro', year:null, name:'Map the Control',        sub:'Match a SPARTA attack to its mitigating NIST 800-53 control', diff:2, xp:100, mins:20, engine:'native'},
   {id:'controls-002', track:'controls', type:'micro', year:null, name:'Tailor for Space',       sub:'Apply / tailor / not-applicable — 800-53 for on-orbit assets', diff:3, xp:150, mins:25, engine:'native'},
@@ -21724,8 +21725,8 @@ META['has4-003'].hints = [
 
 
 
-const BUILD_ID = 'AS-29.21';
-const BUILD_UTC = '2026-11-07T18:10:09Z';
+const BUILD_ID = 'AS-29.22';
+const BUILD_UTC = '2026-11-07T18:21:26Z';
 // ═══════════════════════════════════════════════════════════════════════════════
 // RF FOUNDATIONS TRACK (Phase 3) — original, fully in-browser signal-reading drills
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -23031,6 +23032,153 @@ COMPLIANCE['crypto-001'] = { posture: 'engineering', frameworks: [
 ], references: [
   { type: 'standard', title: 'NIST SP 800-57 Part 1 Rev 5 — Recommendation for Key Management', url: 'https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-57pt1r5.pdf', year: 2020 },
   { type: 'standard', title: 'NASA / CISA — Space Security Best Practices (crypto as a lifecycle)', url: 'https://www.cisa.gov/topics/cybersecurity-best-practices/space-systems', year: 2024 },
+] };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PNT INTEGRATED SPOOF VERDICT (pnt-006) — difficulty-4 capstone that CHAINS the
+// pnt track: RAIM residuals + angle-of-arrival + independent cross-check + clock.
+// The teaching point that raises the ceiling: RAIM is necessary but NOT sufficient.
+// A coordinated full-constellation spoof produces small, consistent residuals that
+// RAIM passes — only the physical layer (AoA) and an independent reference catch it.
+// ═══════════════════════════════════════════════════════════════════════════════
+CHALLENGES['pnt-006'] = {
+  name: 'Integrated Spoof Verdict',
+  generate(seed) {
+    const rng = mkRng(seed);
+    const verdict = rng.choice(['NOMINAL', 'JAMMING', 'SPOOF_PARTIAL', 'SPOOF_COORDINATED']);
+    const rx = { x: 40 + rng.int(0, 20), y: 40 + rng.int(0, 20) };
+    const nSV = rng.int(6, 8);
+    const prns = [];
+    while (prns.length < nSV) { const p = rng.int(2, 32); if (!prns.includes(p)) prns.push(p); }
+
+    // defaults (nominal)
+    let cn0lo = 38, cn0hi = 46, svCount = nSV, fix = 'valid';
+    let crosscheck = 'AGREES with IMU/known position (Δ < 5 m)';
+    let clock = 'steady, disciplined, no jumps';
+    const spoofBearing = rng.int(20, 340);
+    const sats = prns.map((prn, i) => {
+      const sx = 10 + rng.int(0, 80), sy = 10 + rng.int(0, 80);
+      const geo = Math.sqrt((sx - rx.x) ** 2 + (sy - rx.y) ** 2);
+      // nominal: tiny residual, bearings spread
+      let resid = (rng.next() - 0.5) * 1.2;
+      let bearing = rng.int(0, 359);
+      return { prn, sx, sy, geo, resid, bearing, cn0: rng.int(cn0lo, cn0hi) };
+    });
+
+    let answerEvidence; // set of accepted evidence tokens
+    if (verdict === 'JAMMING') {
+      cn0lo = 8; cn0hi = 18; svCount = rng.int(0, 2); fix = 'LOST (holdover)';
+      crosscheck = 'UNAVAILABLE — no fix to compare';
+      clock = 'free-running (no fix to discipline it)';
+      sats.forEach(s => { s.cn0 = rng.int(8, 18); s.resid = NaN; });
+      answerEvidence = ['NOISE'];
+    } else if (verdict === 'SPOOF_PARTIAL') {
+      // one SV has a large residual; RAIM excludes it; everything else nominal
+      const k = rng.int(0, nSV - 1);
+      sats[k].resid = (rng.int(0, 1) ? 1 : -1) * rng.int(16, 40);
+      answerEvidence = ['RESIDUAL', 'RAIM'];
+    } else if (verdict === 'SPOOF_COORDINATED') {
+      // residuals all SMALL and consistent (RAIM is fooled), but all share one bearing
+      // and the position cross-check disagrees. Boosted C/N0.
+      sats.forEach(s => { s.resid = (rng.next() - 0.5) * 1.0; s.bearing = (spoofBearing + rng.int(-3, 3) + 360) % 360; s.cn0 = rng.int(49, 56); });
+      crosscheck = 'DISAGREES with IMU/known position (Δ ≈ ' + rng.int(40, 400) + ' m, drifting)';
+      clock = 'stepped / slowly walking from holdover';
+      answerEvidence = ['AOA', 'CROSSCHECK', 'ANGLE', 'AOAANDCROSSCHECK'];
+    } else {
+      answerEvidence = ['NONE', 'NOMINAL'];
+    }
+
+    // tables
+    const fmtResid = (r) => isNaN(r) ? '  —  ' : (r >= 0 ? '+' : '') + r.toFixed(1);
+    let svtab = ' SV    │ C/N0 │ RAIM residual │ AoA bearing\n──────┼──────┼───────────────┼────────────\n';
+    sats.forEach(s => { svtab += ` SV-${String(s.prn).padStart(2, '0')} │  ${String(s.cn0).padStart(2)}  │    ${fmtResid(s.resid).padStart(6)}     │   ${String(s.bearing).padStart(3)}°\n`; });
+
+    // AoA compass SVG
+    let svg = '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;margin:10px auto;display:block">';
+    svg += '<rect width="200" height="200" fill="#0a0e17" rx="6"/><circle cx="100" cy="100" r="80" fill="none" stroke="#1e293b"/>';
+    svg += '<circle cx="100" cy="100" r="3" fill="#64748b"/>';
+    svg += '<text x="100" y="16" fill="#475569" font-size="9" text-anchor="middle" font-family="monospace">N</text>';
+    if (verdict !== 'JAMMING') sats.forEach(s => {
+      const a = (s.bearing - 90) * Math.PI / 180;
+      const x = 100 + 80 * Math.cos(a), y = 100 + 80 * Math.sin(a);
+      svg += `<line x1="100" y1="100" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${verdict === 'SPOOF_COORDINATED' ? '#f87171' : '#4dabf7'}" stroke-width="1.5" opacity="0.8"/>`;
+    });
+    svg += `<text x="100" y="192" fill="#64748b" font-size="8" text-anchor="middle" font-family="monospace">satellite angle-of-arrival</text></svg>`;
+
+    const problem = svg + `\nCHALLENGE: INTEGRATED SPOOF VERDICT (capstone)
+
+You have a full GNSS receiver snapshot. Reach a verdict by integrating ALL of the
+evidence — no single view is sufficient. Four verdicts are possible:
+
+  NOMINAL           — healthy
+  JAMMING           — denial: C/N0 collapses, satellites drop, fix lost
+  SPOOF_PARTIAL     — one counterfeit satellite; RAIM residual analysis excludes it
+  SPOOF_COORDINATED — a full-constellation spoof. The hard case: residuals stay SMALL
+                      and consistent (RAIM is FOOLED), so you must rely on the physical
+                      layer (all signals from one bearing) and an independent reference.
+
+RECEIVER SNAPSHOT
+  Satellites tracked: ${svCount} of ${nSV}     Position fix: ${fix}
+  Clock: ${clock}
+  Independent cross-check: ${crosscheck}
+
+${svtab}
+Give your verdict and the DECISIVE evidence. Evidence tokens:
+  NOISE (raised noise floor / lost fix) · RESIDUAL (a RAIM outlier) ·
+  AOA (common angle-of-arrival) · CROSSCHECK (disagrees with independent reference) ·
+  NONE (nominal)
+
+ANSWER: VERDICT,EVIDENCE   (e.g. SPOOF_PARTIAL,RESIDUAL)`;
+
+    return {
+      problem,
+      exp: {
+        ans: verdict + ',' + answerEvidence[0],
+        check: (a) => {
+          const s = String(a || '').toUpperCase().replace(/[^A-Z_,]/g, ' ');
+          const gotV = ['SPOOF_COORDINATED', 'SPOOF_PARTIAL', 'JAMMING', 'NOMINAL'].find(v => s.includes(v));
+          if (gotV !== verdict) return false;
+          // evidence must be present and valid for this verdict
+          const ev = s.replace(/[, ]+/g, ' ').split(' ').filter(Boolean);
+          return ev.some(t => answerEvidence.includes(t.replace(/_/g, '')));
+        },
+      },
+      meta: { verdict, evidence: answerEvidence, nSV, svCount },
+    };
+  },
+  hints: [
+    'Read all four views before deciding: C/N0 + SV count + fix (jamming?), RAIM residuals (one outlier?), AoA bearings (do they cluster?), and the independent cross-check.',
+    'Lost fix with collapsed C/N0 → JAMMING (NOISE). A single large RAIM residual among small ones → SPOOF_PARTIAL (RESIDUAL); RAIM excludes it.',
+    'The trap: if residuals are ALL small but C/N0 is suspiciously high, RAIM is being fooled by a coordinated spoof. Do not stop at RAIM.',
+    'For a coordinated spoof, the decisive evidence is physical: every satellite arriving from one bearing (AOA) and the position disagreeing with the independent reference (CROSSCHECK). Answer SPOOF_COORDINATED,AOA (or CROSSCHECK).',
+  ],
+};
+
+META['pnt-006'] = {
+  brief: `Capstone: integrate RAIM residuals, angle-of-arrival, the independent cross-check and clock behaviour into a single spoof/jam verdict. The hard case is the coordinated spoof that defeats RAIM alone.<br><br><strong>Answer format:</strong> VERDICT,EVIDENCE.`,
+  debrief: `This chains the whole PNT track and teaches the insight that separates an operator from an analyst: <strong>RAIM is necessary but not sufficient.</strong> Receiver Autonomous Integrity Monitoring excludes a single bad range by its residual — but a coordinated full-constellation spoof transmits a <em>self-consistent</em> false solution, so every residual stays small and RAIM passes it. The only things that catch it are the physical layer (a single spoofer antenna makes every satellite arrive from one bearing — angle-of-arrival / CRPA) and an independent, non-GNSS reference (IMU, known position, a second clock). That is why resilient PNT is defence-in-depth, not one check. The same reasoning applies on an aircraft, a ship, or a spacecraft — the receiver snapshot looks identical.`,
+  objectives: ['Integrate four independent evidence views into one verdict', 'Recognize when RAIM is sufficient (partial spoof) vs fooled (coordinated spoof)', 'Use angle-of-arrival and an independent reference as the decisive evidence against a coordinated spoof', 'Separate denial (jamming) from deception (spoofing) in a mixed snapshot'],
+  pass: 'Correct verdict with decisive evidence valid for that verdict.',
+  fail: 'Stopping at RAIM on a coordinated spoof (small residuals pass, but AoA + cross-check expose it), or calling a lost fix "spoofing" when it is jamming.',
+  concepts: ['RAIM', 'angle-of-arrival', 'CRPA', 'cross-check', 'defense-in-depth', 'coordinated spoofing', 'PNT resilience'],
+  tools: ['no external tools needed for this drill'],
+  aegis: 'Four views: jamming shows in C/N0+fix; a partial spoof shows one RAIM residual; a coordinated spoof hides from RAIM but shows a common AoA and a cross-check disagreement. Answer VERDICT,EVIDENCE.',
+};
+
+SPARTA_TAGS['pnt-006'] = {
+  techniques: [
+    { id: 'EX-0014.04', name: 'Spoofing: Position, Navigation, and Timing', tactic: 'Execution', tactic_id: 'ST0004', url: 'https://sparta.aerospace.org/technique/EX-0014/04/', status: 'verified', note: 'The capstone detection problem for PNT spoofing, including the coordinated case RAIM alone cannot catch.' },
+    { id: 'EX-0016', name: 'Jamming', tactic: 'Execution', tactic_id: 'ST0004', url: 'https://sparta.aerospace.org/technique/EX-0016/', status: 'verified', note: 'The denial branch of the verdict.' },
+  ],
+  note: 'Integrated PNT-integrity capstone: defense-in-depth detection (RAIM + physical-layer AoA + independent reference). Chains pnt-001..005.',
+};
+
+COMPLIANCE['pnt-006'] = { posture: 'engineering', frameworks: [
+  { id: 'NIST-IR-8323r1', name: 'NIST IR 8323r1 — Foundational PNT Profile', note: 'Detect / respond / resilience for GNSS disruption, layered.' },
+  { id: 'NIST-800-53-SI-4', name: 'NIST 800-53 — SI-4: System Monitoring', note: 'Multi-source integrity monitoring.' },
+  { id: 'SPARTA-EX-0014.04', name: 'SPARTA EX-0014.04 — PNT Spoofing', note: 'The threat the layered detection addresses.' },
+], references: [
+  { type: 'standard', title: 'NIST IR 8323r1 — Foundational PNT Profile', url: 'https://nvlpubs.nist.gov/nistpubs/ir/2023/NIST.IR.8323r1.pdf', year: 2023 },
 ] };
 
 const App = {
