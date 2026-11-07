@@ -39,3 +39,14 @@ console.error=origErr;
 console.log(`build ${out.build} · catalog ${out.catalog} · ${out.n} checks · ${out.fails.length} failures`);
 out.fails.forEach(f=>console.log('  ✗ '+f));
 process.exit(out.fails.length?1:0);
+
+// ── INDEX DRIFT GUARD ────────────────────────────────────────────────────────
+// index.html (GitHub Pages root) must be byte-identical to aerosec-lab.html.
+try {
+  const fs2=require('fs');
+  if (fs2.existsSync('index.html')) {
+    const a=fs2.readFileSync('aerosec-lab.html'); const b=fs2.readFileSync('index.html');
+    if (!a.equals(b)) { console.log('  ✗ index.html has DRIFTED from aerosec-lab.html — re-copy before publishing'); process.exitCode=1; }
+    else console.log('index.html == aerosec-lab.html (Pages root in sync)');
+  }
+} catch(e){}

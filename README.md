@@ -9,3 +9,16 @@ Open `aerosec-lab.html` in any modern browser — no server, no dependencies, wo
 - Build id and ship-time UTC are stamped in the file header, in `BUILD_ID`/`BUILD_UTC`, and in an on-screen badge.
 
 Author: Ted Gransbury · [grumbylearns.io](https://grumbylearns.io)
+
+## Live demo (GitHub Pages)
+
+Once Pages is enabled, the lab is playable in-browser at:
+**https://grumby42.github.io/aerosec-lab/**
+
+`index.html` is a byte-identical copy of `aerosec-lab.html` served at the Pages root,
+and `.nojekyll` tells GitHub to serve the file untouched. To enable: repo **Settings →
+Pages → Build and deployment → Source: Deploy from a branch → Branch: `main` / root**.
+
+> Note: GitHub Pages is **public**. All challenge content and answer logic (client-side
+> JavaScript) becomes world-readable. That is intended for a portfolio artifact; it means
+> the lab is a teaching tool, not a scored/graded CTF.
