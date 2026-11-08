@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroSec Lab</title>
-<!-- AeroSec Lab | build:AS-29.22 | shipped:2026-11-07T18:21:26utc | head:29 +PNT capstone pnt-006 (integrated spoof verdict, diff 4) -->
+<!-- AeroSec Lab | build:AS-29.23 | shipped:2026-11-08T19:34:37utc | head:29 UX audit fixes: null-url links, live landing stats, no auto API-key modal, mobile nav wrap, pre-wrap problem text -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* AeroSec Lab — Stylesheet                                                  */
@@ -285,6 +285,7 @@ html, body {
 #pact { display: none; flex-direction: column; padding: 20px 24px; max-width: 860px; }
 .challenge-header { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 #guided-panel { }
+#scp pre { white-space: pre-wrap; overflow-wrap: break-word; }
 #scp {
   flex: 1;
   overflow-y: auto;
@@ -297,6 +298,7 @@ html, body {
   color: var(--tx2);
   line-height: 1.7;
   white-space: pre-line;
+  overflow-x: auto;
   margin-bottom: 10px;
   min-height: 120px;
 }
@@ -453,7 +455,8 @@ body.a11y-spacing div, body.a11y-spacing p { line-height: 2.0 !important; }
 @media (max-width: 700px) {
   .hdr { flex-wrap: wrap; height: auto; padding: 4px 8px; gap: 2px; }
   .hdr-logo { font-size: 12px; margin-right: 8px; }
-  .hdr-nav { order: 3; width: 100%; gap: 1px; padding: 4px 0; }
+  .hdr-nav { order: 3; flex: 0 0 100%; width: 100%; flex-wrap: wrap; overflow: visible; gap: 1px; padding: 4px 0; }
+  #scp { font-size: 12px; }
   .ntab { font-size: 9px; padding: 4px 6px; }
   .hdr-right { gap: 4px; }
   .hdr-status { font-size: 9px; }
@@ -644,7 +647,7 @@ body.theme-highcontrast * { font-weight: 500; }
         <div class="welcome-badge">🛰️</div>
         <h1>AeroSec Lab</h1>
         <p>Hands-on cybersecurity training for <strong>aerospace</strong>, <strong>aviation</strong>, <strong>maritime</strong>, and <strong>critical infrastructure</strong> systems.</p>
-        <p class="welcome-sub">52 challenges · 3 incident scenarios · 20-week curriculum · Compliance framework mapping</p>
+        <p class="welcome-sub" id="welcome-sub">Loading…</p>
         <button class="btn-start" onclick="App.nav('home')">Start Here →</button>
       </div>
     </section>
@@ -6338,7 +6341,7 @@ COMPLIANCE['adsb-006'] = {
   ],
   references: [
     { type: 'academic', title: 'Strohmeier et al. — On the Security of ADS-B (IEEE 2015)', url: 'https://arxiv.org/pdf/1307.3664', year: 2015 },
-    { type: 'academic', title: 'Leonardi & Sirbu — Kalman Filter for ADS-B Cyber-Attack Detection', url: 'null', year: 2021 },
+    { type: 'academic', title: 'Leonardi & Sirbu — Kalman Filter for ADS-B Cyber-Attack Detection', url: null, year: 2021 },
     { type: 'academic', title: 'Costin & Francillon — Ghost in the Air Traffic (Black Hat USA)', url: null, year: 2012 },
     { type: 'data', title: 'OpenSky Network — Crowdsourced ADS-B Data', url: 'https://opensky-network.org/', year: null },
   ]
@@ -6351,7 +6354,7 @@ COMPLIANCE['adsb-007'] = {
     { id: 'EUROCONTROL-MUAC', name: 'EUROCONTROL MUAC — ADS-B Validation Service', note: 'Production multi-parameter ADS-B integrity checking' },
   ],
   references: [
-    { type: 'academic', title: 'Çevik et al. — Anomaly Detection for ADS-B: Attack Vectors and ML Models (2024)', url: 'null', year: 2024 },
+    { type: 'academic', title: 'Çevik et al. — Anomaly Detection for ADS-B: Attack Vectors and ML Models (2024)', url: null, year: 2024 },
     { type: 'academic', title: 'Habler & Shabtai — Using LSTM Encoder-Decoder for ADS-B Anomaly Detection', url: 'https://arxiv.org/pdf/1711.10192', year: 2019 },
   ]
 };
@@ -6364,7 +6367,7 @@ COMPLIANCE['adsb-008'] = {
     { id: 'FAA-AC119-1', name: 'FAA AC 119-1 — Airworthiness and Ops Approval for ADS-B', note: 'Operational approval requirements including security considerations' },
   ],
   references: [
-    { type: 'academic', title: 'Security of ADS-B and Remote ID Systems (Sensors, 2025)', url: 'null', year: 2025 },
+    { type: 'academic', title: 'Security of ADS-B and Remote ID Systems (Sensors, 2025)', url: null, year: 2025 },
     { type: 'academic', title: 'Ngamboé et al. — CABBA: Authenticated Broadcast for ADS-B', url: 'https://arxiv.org/pdf/2312.09870', year: 2023 },
     { type: 'academic', title: 'Wesson et al. — Can Cryptography Secure Next-Gen Air Traffic Surveillance?', url: null, year: 2014 },
   ]
@@ -9153,7 +9156,7 @@ function renderComplianceTags(challengeId, containerEl) {
       const typeColors = { academic:'#818cf8', writeup:'#22c55e', standard:'#f59e0b', tool:'#06b6d4', data:'#8b5cf6', textbook:'#ec4899', incident:'#f87171', article:'#fb923c' };
       const color = typeColors[r.type] || '#64748b';
       const yearStr = r.year ? ` (${r.year})` : '';
-      const linkHtml = r.url ? ` <a href="${r.url}" target="_blank" rel="noopener" style="color:${color};text-decoration:underline;font-size:9px">→ source</a>` : '';
+      const linkHtml = (r.url && /^https?:\/\//.test(String(r.url))) ? ` <a href="${r.url}" target="_blank" rel="noopener" style="color:${color};text-decoration:underline;font-size:9px">→ source</a>` : '';
       html += `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;padding:4px 0">
         <span style="font-family:var(--mono);font-size:8px;padding:2px 5px;border-radius:2px;background:${color}15;border:1px solid ${color}30;color:${color};white-space:nowrap">${r.type}</span>
         <span style="font-family:sans-serif;font-size:10px;color:var(--tx2)">${r.title}${yearStr}${linkHtml}</span>
@@ -21725,8 +21728,8 @@ META['has4-003'].hints = [
 
 
 
-const BUILD_ID = 'AS-29.22';
-const BUILD_UTC = '2026-11-07T18:21:26Z';
+const BUILD_ID = 'AS-29.23';
+const BUILD_UTC = '2026-11-08T19:34:37Z';
 // ═══════════════════════════════════════════════════════════════════════════════
 // RF FOUNDATIONS TRACK (Phase 3) — original, fully in-browser signal-reading drills
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -22652,9 +22655,12 @@ function _renderBuildBadge() {
     document.body.appendChild(d);
   } catch (e) { /* badge is cosmetic; never let it break the app */ }
 }
+function _renderWelcomeStats(){ try{ const el=document.getElementById('welcome-sub'); if(!el) return;
+  const n=CATALOG.length, tt=CATALOG.filter(c=>c.type==='tabletop').length, tr=TRACKS.length;
+  el.textContent = `${n} challenges · ${tr} tracks · ${tt} incident tabletops · SPARTA v4.0 + NIST 800-53 mapping`; }catch(e){} }
 if (typeof document !== 'undefined') {
-  if (document.readyState && document.readyState !== 'loading') _renderBuildBadge();
-  else document.addEventListener('DOMContentLoaded', _renderBuildBadge);
+  if (document.readyState && document.readyState !== 'loading') { _renderBuildBadge(); _renderWelcomeStats(); }
+  else document.addEventListener('DOMContentLoaded', () => { _renderBuildBadge(); _renderWelcomeStats(); });
 }
 
 // ── verify adapter (AS-29.15 AUDIT FIX) ─────────────────────────────────────────
@@ -23208,9 +23214,8 @@ const App = {
     try { await this.renderReview(); } catch(e) { console.error('renderReview:', (e&&e.message||String(e))); }
     try { await this.renderCompetency(); } catch(e) { console.error('renderCompetency:', (e&&e.message||String(e))); }
 
-    if (!localStorage.getItem('anthropic_api_key')) {
-      setTimeout(() => this.showApiModal(), 1800);
-    }
+    // AEGIS AI coach is opt-in: the key modal opens only from the 🤖 button.
+    // (Previously auto-opened 1.8s after first load — intrusive on the public Pages site.)
   },
 
   tickClock() {

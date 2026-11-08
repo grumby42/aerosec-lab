@@ -22,3 +22,10 @@ Pages → Build and deployment → Source: Deploy from a branch → Branch: `mai
 > Note: GitHub Pages is **public**. All challenge content and answer logic (client-side
 > JavaScript) becomes world-readable. That is intended for a portfolio artifact; it means
 > the lab is a teaching tool, not a scored/graded CTF.
+
+## Release checks
+
+```
+node tools/playtest.js aerosec-lab.html   # engine/verify regression (438 checks) + index.html drift guard
+node tools/ux-smoke.js index.html         # real-browser UX smoke: load, routing, links, mobile nav, legacy + tabletop pass
+```
