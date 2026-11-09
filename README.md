@@ -25,9 +25,17 @@ Pages → Build and deployment → Source: Deploy from a branch → Branch: `mai
 > JavaScript) becomes world-readable. That is intended for a portfolio artifact; it means
 > the lab is a teaching tool, not a scored/graded CTF.
 
+## AI coach (AEGIS) — local only
+
+The optional AI coach needs an Anthropic API key. **The public site never asks for one**:
+the coach is enabled only when `aerosec-lab.html` is opened locally (`file://`). Locally, the
+key is held in tab-scoped `sessionStorage`, sent only to `api.anthropic.com`, and a
+Content-Security-Policy pins all network access to that host.
+
 ## Release checks
 
 ```
 node tools/playtest.js aerosec-lab.html   # engine/verify regression (438 checks) + index.html drift guard
 node tools/ux-smoke.js index.html         # real-browser UX smoke: load, routing, links, mobile nav, legacy + tabletop pass
+node tools/security-gate.js               # public build never requests/stores an API key; CSP clean; local coach intact
 ```

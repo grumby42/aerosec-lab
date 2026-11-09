@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroSec Lab</title>
-<!-- AeroSec Lab | build:AS-29.23 | shipped:2026-11-08T19:34:37utc | head:29 UX audit fixes: null-url links, live landing stats, no auto API-key modal, mobile nav wrap, pre-wrap problem text -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%230a0e17%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2714%27 fill=%27none%27 stroke=%27%234dabf7%27 stroke-width=%274%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%274%27 fill=%27%234dabf7%27/%3E%3Cline x1=%2732%27 y1=%276%27 x2=%2732%27 y2=%2718%27 stroke=%27%234dabf7%27 stroke-width=%274%27/%3E%3C/svg%3E">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src https://api.anthropic.com; object-src 'none'; base-uri 'none'; frame-src 'none'">
+<!-- AeroSec Lab | build:AS-29.24 | shipped:2026-11-09T04:10:52utc | head:29 security: AI coach local-only (no API key on public site), sessionStorage, CSP -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* AeroSec Lab — Stylesheet                                                  */
@@ -716,7 +718,7 @@ body.theme-highcontrast * { font-weight: 500; }
 <div id="ce"><div id="ceo"><span class="mono-sm" style="color:var(--ac)">🤖 AEGIS</span><button class="ibtn" onclick="App.toggleChat()">✕</button></div><div id="cmsgs"></div><div class="cif"><input type="text" id="cinp" placeholder="Ask AEGIS…" onkeydown="if(event.key==='Enter')App.sendChat()"><button id="cst" class="btn-primary" onclick="App.sendChat()">Send</button></div></div>
 
 <!-- API Modal -->
-<div id="apimod"><div class="amc"><h3>AEGIS Settings</h3><p class="dim">Anthropic API key for AI coach.</p><input type="password" id="apik" class="input-full" placeholder="sk-ant-..."><div class="btn-row"><button class="btn-primary" onclick="App.saveApiKey()">Save</button><button class="btn-ghost" onclick="App.closeApiModal()">Cancel</button></div></div></div>
+<div id="apimod"><div class="amc"><h3>AEGIS Settings</h3><p class="dim">Anthropic API key for the optional AI coach. Local use only: stored in this browser tab (sessionStorage), sent only to api.anthropic.com, never to any other server, and cleared when the tab closes.</p><input type="password" id="apik" class="input-full" placeholder="sk-ant-..."><div class="btn-row"><button class="btn-primary" onclick="App.saveApiKey()">Save</button><button class="btn-ghost" onclick="App.closeApiModal()">Cancel</button></div></div></div>
 
 <!-- Hint Modal -->
 <div id="hmod"><div class="modal-inner"><div class="hint-title">💡 Hint <span id="hnum"></span></div><div id="htxt" class="hint-body"></div><div class="btn-row"><button class="btn-primary" onclick="App.nextHint()">Next Hint</button><button class="btn-ghost" onclick="App.closeHint()">Close</button></div></div></div>
@@ -21728,8 +21730,8 @@ META['has4-003'].hints = [
 
 
 
-const BUILD_ID = 'AS-29.23';
-const BUILD_UTC = '2026-11-08T19:34:37Z';
+const BUILD_ID = 'AS-29.24';
+const BUILD_UTC = '2026-11-09T04:10:52Z';
 // ═══════════════════════════════════════════════════════════════════════════════
 // RF FOUNDATIONS TRACK (Phase 3) — original, fully in-browser signal-reading drills
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -22643,6 +22645,22 @@ SPARTA_TAGS['controls-001'] = { foundational_note:'Maps SPARTA techniques to the
 SPARTA_TAGS['controls-002'] = { foundational_note:'NIST SP 800-53 control tailoring for space (apply / modify / not-applicable), informed by 800-53 tailoring guidance and space ground-segment guidance (NIST IR 8401). A compliance/engineering skill, not an attack technique.' };
 
 // ── visible build badge — surfaces BUILD_ID / BUILD_UTC in-app (layout-safe) ─────
+// ── AEGIS AI coach gate (AS-29.24) ──────────────────────────────────────────────
+// The optional AI coach needs an Anthropic API key. A public web page must never ask
+// visitors for a secret, so the coach is available ONLY when this file is opened
+// locally (file://). On https (GitHub Pages) the robot button, key modal and coach
+// panel are removed and no key is ever requested or stored.
+const AEGIS_ENABLED = (typeof location !== 'undefined' && location.protocol === 'file:');
+// Local-only key storage: tab-scoped sessionStorage (cleared when the tab closes),
+// never persistent localStorage.
+const AEGIS_STORE = (typeof sessionStorage !== 'undefined') ? sessionStorage : { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} };
+function _applyAegisGate(){ try{ if (AEGIS_ENABLED) return;
+  // Remove the only entry point (nothing references the button by id); HIDE the panels so
+  // existing code that touches their children (#ceo, #cmsgs, #cst) keeps valid references.
+  const btn=document.querySelector('button[onclick="App.showApiModal()"]'); if (btn) btn.remove();
+  for (const id of ['apimod','ce']) { const el=document.getElementById(id); if (el) { el.style.display='none'; el.setAttribute('hidden',''); el.setAttribute('aria-hidden','true'); } }
+}catch(e){} }
+
 function _renderBuildBadge() {
   try {
     if (typeof document === 'undefined' || !document.body) return;
@@ -22659,8 +22677,8 @@ function _renderWelcomeStats(){ try{ const el=document.getElementById('welcome-s
   const n=CATALOG.length, tt=CATALOG.filter(c=>c.type==='tabletop').length, tr=TRACKS.length;
   el.textContent = `${n} challenges · ${tr} tracks · ${tt} incident tabletops · SPARTA v4.0 + NIST 800-53 mapping`; }catch(e){} }
 if (typeof document !== 'undefined') {
-  if (document.readyState && document.readyState !== 'loading') { _renderBuildBadge(); _renderWelcomeStats(); }
-  else document.addEventListener('DOMContentLoaded', () => { _renderBuildBadge(); _renderWelcomeStats(); });
+  if (document.readyState && document.readyState !== 'loading') { _applyAegisGate(); _renderBuildBadge(); _renderWelcomeStats(); }
+  else document.addEventListener('DOMContentLoaded', () => { _applyAegisGate(); _renderBuildBadge(); _renderWelcomeStats(); });
 }
 
 // ── verify adapter (AS-29.15 AUDIT FIX) ─────────────────────────────────────────
@@ -23557,7 +23575,7 @@ const App = {
     const msgs = document.getElementById('cmsgs');
     if (msgs) msgs.innerHTML = '<div class="cm cm-s">[AEGIS COACH // online — ask anything about this challenge]</div>';
     const cst = document.getElementById('cst');
-    if (cst) cst.textContent = localStorage.getItem('anthropic_api_key') ? '● ONLINE' : '○ offline (set key via 🤖)';
+    if (cst) cst.textContent = AEGIS_STORE.getItem('anthropic_api_key') ? '● ONLINE' : '○ offline (set key via 🤖)';
 
     // Start timer
     this.startTime = Date.now();
@@ -23830,7 +23848,7 @@ const App = {
     };
 
     addMsg('u', msg);
-    const key = localStorage.getItem('anthropic_api_key');
+    const key = AEGIS_STORE.getItem('anthropic_api_key');
     if (!key) {
       addMsg('s', '[AEGIS offline — click 🤖 to set your Anthropic API key]');
       return;
@@ -23870,7 +23888,7 @@ Respond in 180-250 words. Be technically precise, encouraging, and Socratic. Use
       ];
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 800, system, messages })
       });
       const data = await resp.json();
@@ -23887,14 +23905,15 @@ Respond in 180-250 words. Be technically precise, encouraging, and Socratic. Use
 
   // ── API Key Modal ────────────────────────────────────────────────────────────
   showApiModal() {
-    const m=document.getElementById('apimod'); m.style.display='flex';
-    document.getElementById('apik').value = localStorage.getItem('anthropic_api_key') || '';
+    if (!AEGIS_ENABLED) return;  // never on the public site
+    const m=document.getElementById('apimod'); if (!m) return; m.style.display='flex';
+    document.getElementById('apik').value = AEGIS_STORE.getItem('anthropic_api_key') || '';
   },
   closeApiModal() { document.getElementById('apimod').style.display='none'; },
   saveApiKey() {
     const k = document.getElementById('apik').value.trim();
-    if (k) localStorage.setItem('anthropic_api_key', k);
-    else localStorage.removeItem('anthropic_api_key');
+    if (k) AEGIS_STORE.setItem('anthropic_api_key', k);
+    else AEGIS_STORE.removeItem('anthropic_api_key');
     this.closeApiModal();
     const cst = document.getElementById('cst');
     if (cst) cst.textContent = k ? '● ONLINE' : '○ offline';
@@ -24635,7 +24654,7 @@ Respond in 180-250 words. Be technically precise, encouraging, and Socratic. Use
   },
 
   async genBrief(trackId, trackName) {
-    const key = localStorage.getItem('anthropic_api_key');
+    const key = AEGIS_STORE.getItem('anthropic_api_key');
     const out = document.getElementById('cpbout');
     if (!out) return;
 
@@ -24672,7 +24691,7 @@ Professional third-person voice. Technically accurate. Suitable for employers.`;
     try {
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
       });
       const data = await resp.json();
