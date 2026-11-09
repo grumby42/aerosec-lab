@@ -8,7 +8,7 @@ Open `aerosec-lab.html` in any modern browser — no server, no dependencies, wo
 - Fact-checked Hands-On Extensions (online resources, Docker reproductions, hardware options) with per-citation `fact_check_status`.
 - Build id and ship-time UTC are stamped in the file header, in `BUILD_ID`/`BUILD_UTC`, and in an on-screen badge.
 
-**Safety:** receive-and-decode only — no over-the-air transmission. See [docs/SAFETY-AND-COMPLIANCE.md](docs/SAFETY-AND-COMPLIANCE.md). Planned gap work: [docs/ROADMAP.md](docs/ROADMAP.md).
+**Safety:** receive-and-decode only — no over-the-air transmission. See [docs/SAFETY-AND-COMPLIANCE.md](docs/SAFETY-AND-COMPLIANCE.md). Planned gap work: [docs/ROADMAP.md](docs/ROADMAP.md). Working this repo from more than one session: [docs/PARALLEL-SESSIONS.md](docs/PARALLEL-SESSIONS.md).
 
 Author: Ted Gransbury · [grumbylearns.io](https://grumbylearns.io)
 
